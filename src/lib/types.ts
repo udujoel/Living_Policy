@@ -50,6 +50,16 @@ export interface SimulationResult {
   second_order_effects: string[];
   assumptions: Assumption[];
   sdg_alignment: SDGAlignment[];
+  regional_analysis?: RegionalImpact[];
+}
+
+export interface RegionalImpact {
+  region_name: string;
+  coordinates: { x: string; y: string };
+  impact_score: number; // -10 to 10 scale
+  status: 'High Benefit' | 'Moderate Benefit' | 'Neutral' | 'Moderate Risk' | 'High Risk';
+  key_metrics: { label: string; value: string; trend: 'up' | 'down' | 'stable' }[];
+  summary: string;
 }
 
 export interface TimelineEvent {

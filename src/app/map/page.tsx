@@ -1,21 +1,96 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Icon, TopNav, BottomAction, SearchBar, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { SimulationResult, RegionalImpact } from '@/lib/types';
 
-export default function MapPage() {
+// Default fallback data for initial view or when no simulation exists
+const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
+  { 
+    region_name: "Urban Core", 
+    coordinates: { x: "35%", y: "42%" }, 
+    impact_score: 8, 
+    status: "High Benefit", 
+    key_metrics: [
+      { label: "Econ Lift", value: "+14%", trend: "up" },
+      { label: "Carbon", value: "-8%", trend: "down" }
+    ],
+    summary: "Strong economic growth driven by green tech adoption, though housing pressure rises." 
+  },
+  { 
+    region_name: "Suburban Ring", 
+    coordinates: { x: "62%", y: "58%" }, 
+    impact_score: -2, 
+    status: "Moderate Risk", 
+    key_metrics: [
+      { label: "Housing", value: "+5%", trend: "up" },
+      { label: "Commute", value: "+2m", trend: "up" }
+    ],
+    summary: "Housing costs increase due to displacement from urban core; transit upgrades lagging." 
+  },
+  { 
+    region_name: "Industrial District", 
+    coordinates: { x: "48%", "y": "25%" }, 
+    impact_score: 5, 
+    status: "Moderate Benefit", 
+    key_metrics: [
+      { label: "Jobs", value: "+200", trend: "up" },
+      { label: "Energy", value: "-12%", trend: "down" }
+    ],
+    summary: "Transition to cleaner energy reduces costs, but requires workforce retraining." 
+  },
+  { 
+    region_name: "Rural Outskirts", 
+    coordinates: { x: "75%", "y": "30%" }, 
+    impact_score: 0, 
+    status: "Neutral", 
+    key_metrics: [
+      { label: "Transport", value: "0%", trend: "stable" },
+      { label: "Agri-Yield", value: "+1%", trend: "up" }
+    ],
+    summary: "Minimal direct impact; slight benefit from regional supply chain improvements." 
+  }
+];
+
+function MapPageContent() {
   const router = useRouter();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [activeLayer, setActiveLayer] = useState('heatmap');
+  const [regionalData, setRegionalData] = useState<RegionalImpact[]>(DEFAULT_REGIONAL_DATA);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load simulation data from local storage if available
+    const saved = localStorage.getItem('simulationResult');
+    if (saved) {
+      try {
+        const data: SimulationResult = JSON.parse(saved);
+        if (data.regional_analysis && data.regional_analysis.length > 0) {
+          setRegionalData(data.regional_analysis);
+        }
+      } catch (e) {
+        console.error("Failed to parse simulation data", e);
+      }
+    }
+  }, []);
 
   const handleGenerateReport = () => {
     setIsGeneratingReport(true);
     setTimeout(() => {
       router.push('/report');
     }, 2000);
+  };
+
+  const getColor = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes('high benefit')) return 'green';
+    if (s.includes('moderate benefit')) return 'green'; // lighter green handled in component
+    if (s.includes('risk')) return 'red';
+    if (s.includes('neutral')) return 'gray';
+    return 'amber';
   };
 
   return (
@@ -42,37 +117,21 @@ export default function MapPage() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Regional Analysis</h2>
-              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">3 Alerts</span>
+              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">{regionalData.length} Regions</span>
             </div>
 
             <div className="flex flex-col gap-4">
-              <RegionalAnalysisCard 
-                name="Downtown Core" 
-                status="High Benefit" 
-                metrics={[
-                  { label: 'Econ Lift', val: '+14%' },
-                  { label: 'Carbon', val: '-8%' }
-                ]}
-                color="green"
-              />
-              <RegionalAnalysisCard 
-                name="Industrial West" 
-                status="Moderate Risk" 
-                metrics={[
-                  { label: 'Econ Lift', val: '+2%' },
-                  { label: 'Carbon', val: '+4%' }
-                ]}
-                color="amber"
-              />
-              <RegionalAnalysisCard 
-                name="Residential East" 
-                status="Neutral" 
-                metrics={[
-                  { label: 'Econ Lift', val: '+1%' },
-                  { label: 'Carbon', val: '-2%' }
-                ]}
-                color="gray"
-              />
+              {regionalData.map((region, idx) => (
+                <RegionalAnalysisCard 
+                  key={idx}
+                  name={region.region_name}
+                  status={region.status}
+                  metrics={region.key_metrics}
+                  color={getColor(region.status)}
+                  isSelected={selectedRegion === region.region_name}
+                  onClick={() => setSelectedRegion(region.region_name)}
+                />
+              ))}
             </div>
           </div>
 
@@ -133,11 +192,18 @@ export default function MapPage() {
             </div>
           )}
 
-          {/* Interactive Map Elements */}
-          <MapMarker x="35%" y="42%" color="green" pulse />
-          <MapMarker x="62%" y="58%" color="amber" />
-          <MapMarker x="48%" y="25%" color="green" />
-          <MapMarker x="75%" y="30%" color="red" />
+          {/* Dynamic Map Markers from Regional Data */}
+          {regionalData.map((region, idx) => (
+            <MapMarker 
+              key={idx}
+              x={region.coordinates.x}
+              y={region.coordinates.y}
+              color={getColor(region.status)}
+              pulse={region.status.includes('High')}
+              label={region.region_name}
+              onClick={() => setSelectedRegion(region.region_name)}
+            />
+          ))}
           
           {/* Layer Control Modal (Mock) */}
           <div className="absolute left-8 bottom-8 z-30 flex flex-col gap-2">
@@ -169,11 +235,18 @@ export default function MapPage() {
           </div>
 
           <div className="lg:hidden absolute bottom-6 left-6 right-6 z-30">
+             {/* Show first region or selected one on mobile */}
             <RegionalAnalysisCard 
-              name="Downtown Core" 
-              status="High Benefit" 
-              metrics={[{ label: 'Econ Lift', val: '+14%' }, { label: 'Carbon', val: '-8%' }]}
-              color="green"
+              name={selectedRegion ? selectedRegion : regionalData[0]?.region_name}
+              status={selectedRegion 
+                ? regionalData.find(r => r.region_name === selectedRegion)?.status 
+                : regionalData[0]?.status}
+              metrics={selectedRegion 
+                ? regionalData.find(r => r.region_name === selectedRegion)?.key_metrics 
+                : regionalData[0]?.key_metrics}
+              color={getColor(selectedRegion 
+                ? regionalData.find(r => r.region_name === selectedRegion)?.status || 'Neutral'
+                : regionalData[0]?.status || 'Neutral')}
               compact
             />
           </div>
@@ -192,6 +265,15 @@ export default function MapPage() {
   );
 }
 
+// Wrapper for Suspense
+export default function MapPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#0a1118] text-white">Loading Map Data...</div>}>
+      <MapPageContent />
+    </Suspense>
+  );
+}
+
 const LayerBtn = ({ active, onClick, label }: any) => (
   <button 
     onClick={onClick}
@@ -204,10 +286,13 @@ const LayerBtn = ({ active, onClick, label }: any) => (
   </button>
 );
 
-const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false }: any) => (
-  <div className={cn(
-    "stitch-card group hover:border-white/10 transition-all",
-    compact ? "p-4 bg-background-dark/90 backdrop-blur-md" : "p-6 bg-card-alt/20"
+const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, isSelected, onClick }: any) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+    "stitch-card group hover:border-white/10 transition-all cursor-pointer",
+    compact ? "p-4 bg-background-dark/90 backdrop-blur-md" : "p-6 bg-card-alt/20",
+    isSelected && "border-primary/50 bg-primary/5"
   )}>
     <div className="flex justify-between items-start mb-4">
       <div className="flex flex-col">
@@ -223,12 +308,13 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false }:
         "w-2 h-2 rounded-full",
         color === 'green' ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : 
         color === 'amber' ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" :
+        color === 'red' ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]" :
         "bg-white/20"
       )} />
     </div>
 
     <div className="grid grid-cols-2 gap-4">
-      {metrics.map((m: any, i: number) => (
+      {metrics?.map((m: any, i: number) => (
         <div key={i} className="flex flex-col bg-white/5 p-2 rounded-lg border border-white/5">
           <span className="text-[8px] font-bold text-muted-foreground uppercase">{m.label}</span>
           <span className="text-xs font-bold font-mono text-foreground/90">{m.val}</span>
@@ -238,22 +324,27 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false }:
   </div>
 );
 
-const MapMarker = ({ x, y, color, pulse = false }: any) => (
+const MapMarker = ({ x, y, color, pulse = false, label, onClick }: any) => (
   <div 
+    onClick={onClick}
     className="absolute -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group"
     style={{ left: x, top: y }}
   >
     <div className={cn(
       "w-4 h-4 rounded-full border-2 border-white/20 transition-transform group-hover:scale-125",
-      color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : "bg-red-500",
+      color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : color === 'red' ? "bg-red-500" : "bg-gray-500",
       pulse && "animate-pulse"
     )} />
     {pulse && (
       <div className={cn(
         "absolute -inset-2 rounded-full opacity-30 animate-ping",
-        color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : "bg-red-500"
+        color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : color === 'red' ? "bg-red-500" : "bg-gray-500"
       )} />
     )}
+    {/* Tooltip on hover */}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+      {label}
+    </div>
   </div>
 );
 
@@ -279,4 +370,3 @@ const FilterChip = ({ label, active = false }: { label: string, active?: boolean
     {label}
   </button>
 );
-

@@ -93,6 +93,40 @@ Return a JSON object with the following structure:
   ],
   "sdg_alignment": [
     { "sdg_id": 13, "sdg_name": "Climate Action", "impact_score": "positive", "justification": "One sentence justification." }
+  ],
+  "regional_analysis": [
+    { 
+      "region_name": "Urban Core", 
+      "coordinates": { "x": "35%", "y": "42%" }, 
+      "impact_score": 8, 
+      "status": "High Benefit", 
+      "key_metrics": [{ "label": "Econ Lift", "value": "+14%", "trend": "up" }], 
+      "summary": "Impact summary..." 
+    },
+    { 
+      "region_name": "Suburban Ring", 
+      "coordinates": { "x": "62%", "y": "58%" }, 
+      "impact_score": -2, 
+      "status": "Moderate Risk", 
+      "key_metrics": [{ "label": "Housing Cost", "value": "+5%", "trend": "up" }], 
+      "summary": "Impact summary..." 
+    },
+    { 
+      "region_name": "Industrial District", 
+      "coordinates": { "x": "48%", "y": "25%" }, 
+      "impact_score": 5, 
+      "status": "Moderate Benefit", 
+      "key_metrics": [{ "label": "Jobs", "value": "+200", "trend": "up" }], 
+      "summary": "Impact summary..." 
+    },
+    { 
+      "region_name": "Rural Outskirts", 
+      "coordinates": { "x": "75%", "y": "30%" }, 
+      "impact_score": 0, 
+      "status": "Neutral", 
+      "key_metrics": [{ "label": "Transport", "value": "0%", "trend": "stable" }], 
+      "summary": "Impact summary..." 
+    }
   ]
 }
 
