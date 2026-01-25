@@ -29,6 +29,16 @@ function VisualizationContent() {
     }
   }, [simId]);
 
+  // Helper to safely get indicator values
+  const getIndicator = (group: 'economic' | 'social' | 'environmental', namePart: string) => {
+    if (!simData?.outcomes?.[group]?.indicators) return null;
+    return simData.outcomes[group].indicators.find((i: any) => i.name.toLowerCase().includes(namePart.toLowerCase()));
+  };
+
+  const gdpIndicator = getIndicator('economic', 'gdp');
+  const carbonIndicator = getIndicator('environmental', 'carbon');
+  const jobsIndicator = getIndicator('economic', 'job') || getIndicator('social', 'employment');
+
   const handleDeploy = () => {
     setIsDeploying(true);
     
@@ -74,12 +84,8 @@ function VisualizationContent() {
                 </h2>
                 <p className="text-xl text-muted-foreground/70 max-w-2xl leading-relaxed mt-4 font-medium">
                   {selectedScenario === 'baseline' 
-                    ? (fileName?.toLowerCase().includes('estonia')
-                      ? "Current trajectory: Estonia maintains its existing energy mix with 76% dependence on oil shale for electricity generation. Under business-as-usual conditions, GHG emissions decline at 1.8% annually due to EU-wide carbon pricing, but the country remains vulnerable to fossil fuel price volatility. The Ida-Viru region continues to face economic stagnation with limited alternative employment. By 2030, renewable energy penetration reaches only 28%, falling short of EU mandates and risking compliance penalties of approximately €180M annually."
-                      : "Business-as-usual scenario: Current policy frameworks remain unchanged. Economic growth follows historical trends with modest 1.2% annual GDP expansion. Environmental indicators show incremental improvements driven by existing regulations, but fall short of international climate commitments. Stakeholder impacts remain stable with no significant disruptions to established industries or labor markets.")
-                    : (simData?.long_term_impact || simData?.short_term_impact || (fileName?.toLowerCase().includes('estonia') 
-                      ? "Policy intervention transforms Estonia's energy architecture through three interconnected phases: (1) Immediate transition (2024-2027): €2.4B capital deployment for renewable infrastructure triggers 8,200 green-tech jobs while phasing out 3,400 oil-shale positions through €420M just-transition fund. GDP accelerates to 4.2% annually driven by EU taxonomy-aligned investments and €680M in avoided ETS penalties. (2) Stabilization (2028-2030): Renewable penetration surges to 42% (vs 28% baseline), reducing fossil fuel imports by €1.1B annually. Electricity prices stabilize at +2.1% above baseline after initial +4.2% spike, offset by 15% reduction in grid losses through smart infrastructure. Ida-Viru region pivots to green hydrogen hub, attracting €890M in private sector commitments. (3) Long-term consolidation (2031-2035): 70% GHG reduction achievement unlocks €3.2B in EU climate financing. Carbon intensity drops to 82 gCO2/kWh (from 312 gCO2/kWh baseline), positioning Estonia as regional clean energy exporter. Secondary effects include 12M-ton cumulative CO2 avoidance, 88% alignment with Paris Agreement/EU Taxonomy frameworks, and accelerated electrification of transport (35% EV penetration vs 12% baseline). Critical trade-offs: short-term energy price volatility, spatial inequality between urban innovation hubs and rural transition zones, and €180M annual infrastructure maintenance burden through 2040."
-                      : "Comprehensive policy intervention analysis: Multi-phased implementation strategy projects 4.2% GDP acceleration through strategic sectoral investments and regulatory alignment. Environmental targets achieve 70% emissions reduction by 2030 through technology deployment, behavioral incentives, and infrastructure modernization. Economic modeling indicates €2.4B capital requirement offset by €3.8B in long-term fiscal benefits including avoided compliance penalties, reduced import dependency, and enhanced export competitiveness. Stakeholder impact matrix reveals asymmetric distribution: urban knowledge workers gain through upskilling programs (+8,200 jobs), while legacy industry workers face transition risks (-3,400 positions) mitigated by €420M just-transition mechanisms. Causal chain analysis identifies second-order effects including accelerated technology adoption, regional development imbalances, and cross-border spillover benefits. Alignment with international frameworks reaches 88% (Paris Agreement, EU Taxonomy, ILO Standards), exceeding baseline compliance by 46 percentage points. Critical uncertainties include commodity price volatility, geopolitical supply chain disruptions, and policy continuity across electoral cycles. Confidence intervals: GDP projections ±1.2%, emissions targets ±8%, cost estimates ±15%."))
+                    ? "Baseline projection assumes current policy levers remain static. Economic and environmental indicators follow historical trends without intervention."
+                    : (simData?.reasoning_summary || simData?.short_term_impact || "Analysis complete. Review the projected outcomes below.")
                   }
                 </p>
               </div>
@@ -125,14 +131,14 @@ function VisualizationContent() {
                       <span className="text-[10px] font-bold text-muted-foreground uppercase">Projected GDP Growth</span>
                       <div className="flex items-center gap-3">
                         <span className="text-4xl font-bold font-mono tracking-tighter text-white">
-                          {selectedScenario === 'baseline' ? '+1.2%' : '+4.2%'}
+                          {selectedScenario === 'baseline' ? '+1.2%' : (gdpIndicator?.change || '+4.2%')}
                         </span>
                         <div className={cn(
                           "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-500",
                           selectedScenario === 'baseline' ? "text-muted-foreground bg-white/5" : "text-green-400 bg-green-400/10"
                         )}>
                           <Icon name={selectedScenario === 'baseline' ? 'trending_flat' : 'trending_up'} className="text-xs" />
-                          <span>{selectedScenario === 'baseline' ? 'Baseline' : '1.2% Gain'}</span>
+                          <span>{selectedScenario === 'baseline' ? 'Baseline' : (gdpIndicator?.trend === 'positive' ? 'Growth' : 'Decline')}</span>
                         </div>
                       </div>
                     </div>
@@ -207,12 +213,23 @@ function VisualizationContent() {
                           <StakeholderRow icon="store" label="Service Sector" desc="Standard labor market" impact="Low" status="neutral" />
                         </>
                       ) : (
-                        <>
-                          <StakeholderRow icon="factory" label="Tech Manufacturing" desc="Resource efficiency gain" impact="High" status="positive" />
-                          <StakeholderRow icon="school" label="Urban Youth" desc="Upskilling opportunities" impact="Med" status="positive" />
-                          <StakeholderRow icon="agriculture" label="Small-scale Farmers" desc="Transition cost burden" impact="High" status="negative" />
-                          <StakeholderRow icon="store" label="Service Sector" desc="Moderate automation risk" impact="Risk" status="neutral" />
-                        </>
+                        simData?.stakeholder_impacts?.slice(0, 4).map((s: any, i: number) => (
+                          <StakeholderRow 
+                            key={i}
+                            icon="groups" 
+                            label={s.group} 
+                            desc={s.impact.substring(0, 30) + '...'} 
+                            impact={s.sentiment === 'positive' ? 'High' : s.sentiment === 'negative' ? 'Risk' : 'Med'} 
+                            status={s.sentiment} 
+                          />
+                        )) || (
+                          <>
+                            <StakeholderRow icon="factory" label="Tech Manufacturing" desc="Resource efficiency gain" impact="High" status="positive" />
+                            <StakeholderRow icon="school" label="Urban Youth" desc="Upskilling opportunities" impact="Med" status="positive" />
+                            <StakeholderRow icon="agriculture" label="Small-scale Farmers" desc="Transition cost burden" impact="High" status="negative" />
+                            <StakeholderRow icon="store" label="Service Sector" desc="Moderate automation risk" impact="Risk" status="neutral" />
+                          </>
+                        )
                       )}
                     </div>
                   </div>
@@ -227,25 +244,25 @@ function VisualizationContent() {
                 <IndicatorSection title="Systemic Resiliency" icon="trending_up">
                   <ImpactMetricCard 
                     label="GDP Growth" 
-                    value={selectedScenario === 'baseline' ? "+1.2%" : "+2.4%"} 
-                    sub={selectedScenario === 'baseline' ? "Standard" : "Moderate Gain"} 
-                    status={selectedScenario === 'baseline' ? "neutral" : "positive"} 
+                    value={selectedScenario === 'baseline' ? "+1.2%" : (gdpIndicator?.value || "+2.4%")} 
+                    sub={selectedScenario === 'baseline' ? "Standard" : (gdpIndicator?.trend === 'positive' ? "Moderate Gain" : "Adjustment")} 
+                    status={selectedScenario === 'baseline' ? "neutral" : (gdpIndicator?.trend === 'positive' ? "positive" : "neutral")} 
                     chart={selectedScenario === 'baseline' ? [30, 32, 31, 33, 32, 34] : [30, 45, 40, 60, 55, 75]} 
                   />
                   <ImpactMetricCard 
-                    label="Industrial Efficiency" 
-                    value={selectedScenario === 'baseline' ? "+0.8%" : "+8.2%"} 
-                    sub={selectedScenario === 'baseline' ? "Baseline" : "Optimized"} 
-                    status={selectedScenario === 'baseline' ? "neutral" : "positive"} 
+                    label="Job Market" 
+                    value={selectedScenario === 'baseline' ? "+0.8%" : (jobsIndicator?.value || "+8.2%")} 
+                    sub={selectedScenario === 'baseline' ? "Baseline" : "Projected"} 
+                    status={selectedScenario === 'baseline' ? "neutral" : (jobsIndicator?.trend === 'positive' ? "positive" : "neutral")} 
                     chart={selectedScenario === 'baseline' ? [20, 21, 22, 21, 23, 22] : [20, 35, 55, 40, 60, 80]} 
                   />
                 </IndicatorSection>
                 <IndicatorSection title="Sustainability" icon="eco">
                   <ImpactMetricCard 
                     label="Carbon Reduction" 
-                    value={selectedScenario === 'baseline' ? "-2%" : "-18%"} 
+                    value={selectedScenario === 'baseline' ? "-2%" : (carbonIndicator?.value || "-18%")} 
                     sub={selectedScenario === 'baseline' ? "Slow Pace" : "On Track"} 
-                    status={selectedScenario === 'baseline' ? "neutral" : "positive"} 
+                    status={selectedScenario === 'baseline' ? "neutral" : (carbonIndicator?.trend === 'positive' ? "positive" : "neutral")} 
                     chart={selectedScenario === 'baseline' ? [90, 88, 89, 87, 86, 85] : [90, 80, 70, 60, 40, 20]} 
                   />
                   <ImpactMetricCard 
@@ -332,21 +349,34 @@ function VisualizationContent() {
                   <div className="flex flex-col relative pl-6">
                     <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-white/5" />
                     
-                    <FlowStep 
-                      title="Baseline Synthesis" 
-                      desc="Aggregating historical labor trends from the Bureau of Economic Analysis (2010-2023)." 
-                      status="completed"
-                    />
-                    <FlowStep 
-                      title="Propensity Calibration" 
-                      desc="Adjusting consumption multipliers based on current inflation-adjusted disposable income." 
-                      status="completed"
-                    />
-                    <FlowStep 
-                      title="Final Projection" 
-                      desc="Monte Carlo simulation (10k iterations) to determine confidence intervals." 
-                      status="active"
-                    />
+                    {simData?.timeline_events ? (
+                      simData.timeline_events.map((event: any, i: number) => (
+                        <FlowStep 
+                          key={i}
+                          title={`${event.year}: ${event.title}`} 
+                          desc={event.description} 
+                          status={i === 0 ? 'completed' : 'active'}
+                        />
+                      ))
+                    ) : (
+                      <>
+                        <FlowStep 
+                          title="Baseline Synthesis" 
+                          desc="Aggregating historical labor trends from the Bureau of Economic Analysis (2010-2023)." 
+                          status="completed"
+                        />
+                        <FlowStep 
+                          title="Propensity Calibration" 
+                          desc="Adjusting consumption multipliers based on current inflation-adjusted disposable income." 
+                          status="completed"
+                        />
+                        <FlowStep 
+                          title="Final Projection" 
+                          desc="Monte Carlo simulation (10k iterations) to determine confidence intervals." 
+                          status="active"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -779,36 +809,52 @@ function VisualizationContent() {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <SDGBreakdownRow 
-                    id={1} 
-                    name="No Poverty" 
-                    score={85} 
-                    desc="Direct cash transfers and subsidy programs significantly reduce absolute poverty levels." 
-                    status="positive" 
-                    icon="payments"
-                  />
-                  
-                  <button className="stitch-button-primary w-full py-5 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-[0.1em] shadow-[0_10px_30px_rgba(34,197,94,0.15)] bg-green-500 hover:bg-green-600 border-green-500 shadow-green-500/20">
-                    <span>View Full Analysis Report</span>
-                    <Icon name="analytics" className="text-xl" />
-                  </button>
-
-                  <SDGBreakdownRow 
-                    id={11} 
-                    name="Sustainable Cities" 
-                    score={12} 
-                    desc="Mixed impact on urban density; requires zoning policy alignment to reach target." 
-                    status="neutral" 
-                    icon="location_city"
-                  />
-                  <SDGBreakdownRow 
-                    id={8} 
-                    name="Economic Growth" 
-                    score={-18} 
-                    desc="Potential short-term labor market volatility detected due to aggressive energy transition." 
-                    status="negative" 
-                    icon="trending_down"
-                  />
+                  {simData?.sdg_alignment ? (
+                    simData.sdg_alignment.map((sdg: any) => (
+                      <SDGBreakdownRow 
+                        key={sdg.sdg_id}
+                        id={sdg.sdg_id} 
+                        name={sdg.sdg_name} 
+                        score={sdg.impact_score === 'positive' ? 85 : sdg.impact_score === 'negative' ? -18 : 12} 
+                        desc={sdg.justification} 
+                        status={sdg.impact_score} 
+                        icon={sdg.sdg_id === 1 ? "payments" : sdg.sdg_id === 11 ? "location_city" : sdg.sdg_id === 8 ? "trending_down" : "public"}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <SDGBreakdownRow 
+                        id={1} 
+                        name="No Poverty" 
+                        score={85} 
+                        desc="Direct cash transfers and subsidy programs significantly reduce absolute poverty levels." 
+                        status="positive" 
+                        icon="payments"
+                      />
+                      
+                      <button className="stitch-button-primary w-full py-5 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-[0.1em] shadow-[0_10px_30px_rgba(34,197,94,0.15)] bg-green-500 hover:bg-green-600 border-green-500 shadow-green-500/20">
+                        <span>View Full Analysis Report</span>
+                        <Icon name="analytics" className="text-xl" />
+                      </button>
+    
+                      <SDGBreakdownRow 
+                        id={11} 
+                        name="Sustainable Cities" 
+                        score={12} 
+                        desc="Mixed impact on urban density; requires zoning policy alignment to reach target." 
+                        status="neutral" 
+                        icon="location_city"
+                      />
+                      <SDGBreakdownRow 
+                        id={8} 
+                        name="Economic Growth" 
+                        score={-18} 
+                        desc="Potential short-term labor market volatility detected due to aggressive energy transition." 
+                        status="negative" 
+                        icon="trending_down"
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
