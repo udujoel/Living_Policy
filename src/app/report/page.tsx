@@ -1,25 +1,57 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Icon, TopNav, BottomAction, SidebarNav } from '@/components/SharedUI';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
+import { getStoredSimulations } from '@/lib/storage';
+import { generatePolicyPDF } from '@/lib/pdf-gen';
 
-export default function ReportPage() {
+function ReportContent() {
+  const searchParams = useSearchParams();
+  const simId = searchParams.get('simId');
+  const [simData, setSimData] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  useEffect(() => {
+    const sims = getStoredSimulations();
+    const currentSim = simId ? sims.find(s => s.id === simId) : sims[0];
+    if (currentSim) {
+      setSimData(currentSim.data);
+    }
+  }, [simId]);
+
   const handleExport = () => {
+    if (!simData) return;
     setIsExporting(true);
     setTimeout(() => {
+      generatePolicyPDF({
+        ...simData,
+        scenario_id: simId || 'temp',
+        name: simData.scenarioName || 'Policy Report',
+      });
       setIsExporting(false);
-      // Create a dummy download
-      const link = document.createElement('a');
-      link.href = '#';
-      link.download = 'LPS_Final_Report.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }, 2500);
+    }, 1500);
   };
+
+  if (!simData) {
+    return (
+      <main className="max-container flex flex-col h-screen overflow-hidden bg-[#0a1118] items-center justify-center">
+        <p className="text-muted-foreground">Loading report data...</p>
+      </main>
+    );
+  }
+
+  // Safely extract metrics
+  const getIndicator = (group: 'economic' | 'social' | 'environmental', namePart: string) => {
+    if (!simData?.outcomes?.[group]?.indicators) return null;
+    return simData.outcomes[group].indicators.find((i: any) => i.name.toLowerCase().includes(namePart.toLowerCase()));
+  };
+
+  const gdp = getIndicator('economic', 'gdp');
+  const carbon = getIndicator('environmental', 'carbon');
+  const debt = getIndicator('economic', 'debt') || { value: '+2.4%', change: 'Net Stability Risk' };
+  const equityScore = '84/100'; // Default if not found
 
   return (
     <main className="max-container flex flex-col h-screen overflow-hidden pb-20 lg:pb-0 bg-[#0a1118]">
@@ -31,13 +63,15 @@ export default function ReportPage() {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-white/5 pb-10">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded border border-primary/20 uppercase tracking-widest">Scenario B</span>
+                <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded border border-primary/20 uppercase tracking-widest">
+                  {simData.scenarioName || 'Scenario Report'}
+                </span>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Confidence Score: 94%</span>
               </div>
-              <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">Clean Energy Transition Path</h2>
+              <h2 className="text-3xl lg:text-5xl font-bold tracking-tight">Policy Impact Assessment</h2>
               <div className="flex flex-wrap items-center gap-6 mt-2">
-                <ReportInfo icon="calendar_today" label="Generated" value="Jan 18, 2026" />
-                <ReportInfo icon="location_on" label="Jurisdiction" value="State of Illinois" />
+                <ReportInfo icon="calendar_today" label="Generated" value={new Date().toLocaleDateString()} />
+                <ReportInfo icon="location_on" label="Jurisdiction" value="Global / Regional" />
                 <ReportInfo icon="security" label="Classification" value="Decision Support" />
               </div>
             </div>
@@ -64,21 +98,21 @@ export default function ReportPage() {
           {/* Key Impact Dashboard */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <ReportMetricCard 
-              label="Fiscal Balance Change" 
-              value="-$420M" 
-              sub="10yr Proj. Cost"
-              color="text-red-400" 
+              label="Economic Outcome" 
+              value={gdp?.value || "N/A"} 
+              sub={gdp?.change || "Stable"}
+              color={gdp?.trend === 'positive' ? "text-green-400" : gdp?.trend === 'negative' ? "text-red-400" : "text-amber-400"} 
             />
             <ReportMetricCard 
-              label="Social Equity Score" 
-              value="84/100" 
-              sub="+14% Improvement"
-              color="text-green-400" 
+              label="Environmental Impact" 
+              value={carbon?.value || "N/A"} 
+              sub={carbon?.change || "Neutral"}
+              color={carbon?.trend === 'positive' ? "text-green-400" : carbon?.trend === 'negative' ? "text-red-400" : "text-amber-400"} 
             />
             <ReportMetricCard 
               label="Public Debt Evolution" 
-              value="+2.4%" 
-              sub="Net Stability Risk"
+              value={debt.value} 
+              sub={debt.change}
               color="text-amber-400" 
             />
           </div>
@@ -89,7 +123,7 @@ export default function ReportPage() {
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Executive Summary</h3>
               <div className="stitch-card p-10 bg-card-alt/30 border-white/5 relative group">
                 <p className="text-lg lg:text-xl leading-relaxed text-foreground/90 font-serif italic relative z-10">
-                  "Over the next 10 years, the Proposed Transition suggests a significant acceleration in decentralized energy adoption. While initial fiscal outlays are 15% higher than baseline, the long-term reduction in grid maintenance costs and the 12% increase in regional energy security provide a stable economic floor. Social equity scores peak in Year 6 as low-income housing retrofits are completed. This transition path balances immediate fiscal pressure against generational energy independence."
+                  "{simData.reasoning_summary || simData.short_term_impact || "Analysis complete. Review the metrics above."}"
                 </p>
               </div>
             </div>
@@ -99,9 +133,14 @@ export default function ReportPage() {
               <div className="flex flex-col gap-6">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Model Assumptions</h3>
                 <div className="stitch-card p-8 flex flex-col gap-6 bg-card-alt/20">
-                  <AssumptionItem icon="groups" text="Assumes 85% consumer participation by Year 5" />
-                  <AssumptionItem icon="trending_up" text="Sensitive to federal interest rate fluctuations" />
-                  <AssumptionItem icon="check_circle" text="Model accounts for seasonal yield variations" />
+                  {simData.assumptions?.slice(0, 3).map((a: any, i: number) => (
+                    <AssumptionItem key={i} icon="info" text={a.description} />
+                  )) || (
+                    <>
+                      <AssumptionItem icon="groups" text="Assumes 85% consumer participation by Year 5" />
+                      <AssumptionItem icon="trending_up" text="Sensitive to federal interest rate fluctuations" />
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -135,6 +174,14 @@ export default function ReportPage() {
       </div>
       <SidebarNav />
     </main>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#0a1118] text-white">Loading Report...</div>}>
+      <ReportContent />
+    </Suspense>
   );
 }
 
