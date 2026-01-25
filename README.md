@@ -4,6 +4,10 @@ A hackathon project for the **Gemini 3 Hackathon: Build what’s next.**
 
 Living Policy Simulator is an AI decision-support web app that turns static public policy documents into interactive, explorable future scenarios. It uses Google Gemini 3 (via OpenRouter) to analyze policy proposals and simulate their multidimensional impacts.
 
+## Live Demo
+
+[living-policy.vercel.app](https://living-policy.vercel.app)
+
 ## Features
 
 - **Policy Ingestion**: Extract goals, levers, constraints, and stakeholders from raw text or PDFs.
@@ -53,6 +57,7 @@ Living Policy Simulator is an AI decision-support web app that turns static publ
 ## Gemini 3 Integration
 
 This app leverages the improved reasoning and latency of **Gemini 3 Flash/Pro**.
+
 - **Context Handling**: Gemini 3 analyzes long policy documents to extract structured metadata.
 - **Counterfactual Reasoning**: The simulation engine asks "What if X changed?" to generate plausible futures.
 - **Thinking Levels**: Configured via temperature and system prompts to balance quick summaries with deep causal analysis.

@@ -35,17 +35,40 @@ export interface PolicyConstraint {
 export interface SimulationResult {
   scenario_id: string;
   name: string;
+  reasoning_summary?: string;
   outcomes: {
     economic: IndicatorGroup;
     social: IndicatorGroup;
     environmental: IndicatorGroup;
   };
+  timeline_events?: TimelineEvent[];
+  kpis?: Record<string, KPIDetail>;
+  stakeholder_impacts?: StakeholderImpact[];
   short_term_impact: string;
   long_term_impact: string;
   trade_offs: string[];
   second_order_effects: string[];
   assumptions: Assumption[];
   sdg_alignment: SDGAlignment[];
+}
+
+export interface TimelineEvent {
+  year: string;
+  title: string;
+  description: string;
+}
+
+export interface KPIDetail {
+  value: string;
+  trend: 'up' | 'down' | 'stable';
+  drivers: { factor: string; contribution: string; note: string }[];
+  risks: string[];
+}
+
+export interface StakeholderImpact {
+  group: string;
+  impact: string;
+  sentiment: 'positive' | 'negative' | 'neutral' | 'mixed';
 }
 
 export interface IndicatorGroup {

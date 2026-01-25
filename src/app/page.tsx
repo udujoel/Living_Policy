@@ -100,6 +100,18 @@ export default function WelcomePage() {
             ) : "Sign In"}
           </button>
 
+          <button 
+            onClick={() => {
+              setIsLoggingIn(true);
+              setTimeout(() => router.push('/dashboard'), 800);
+            }}
+            disabled={isLoggingIn}
+            className="w-full py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-center gap-2 group"
+          >
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground group-hover:text-white transition-colors">Preview as Guest</span>
+            <Icon name="arrow_forward" className="text-base text-muted-foreground/60 group-hover:text-primary transition-colors group-hover:translate-x-1 duration-300" />
+          </button>
+
           <div className="flex items-center gap-4 py-2">
             <div className="h-[1px] flex-1 bg-white/10" />
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Or continue with</span>

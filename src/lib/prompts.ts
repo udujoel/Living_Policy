@@ -35,6 +35,7 @@ Return a JSON object with the following structure:
 {
   "scenario_id": "unique-id",
   "name": "Scenario Name (e.g. Baseline or High Investment)",
+  "reasoning_summary": "A concise chain-of-thought summary explaining the causal links between the lever changes and the major outcomes.",
   "outcomes": {
     "economic": {
       "summary": "Economic outcome summary",
@@ -55,6 +56,34 @@ Return a JSON object with the following structure:
       ]
     }
   },
+  "timeline_events": [
+    { "year": "2025", "title": "Implementation Phase", "description": "Key event description..." },
+    { "year": "2030", "title": "Maturity Phase", "description": "Key event description..." }
+  ],
+  "kpis": {
+    "economic_growth": { 
+      "value": "+4.2%", 
+      "trend": "up", 
+      "drivers": [{"factor": "Renewable Investment", "contribution": "+1.8%", "note": "Direct capital injection"}], 
+      "risks": ["Inflationary pressure", "Supply chain bottlenecks"] 
+    },
+    "carbon_emissions": { 
+      "value": "-40%", 
+      "trend": "down", 
+      "drivers": [{"factor": "Coal Phase-out", "contribution": "-25%", "note": "Plant closures"}], 
+      "risks": ["Grid instability"] 
+    },
+    "employment": { 
+      "value": "+12,000", 
+      "trend": "up", 
+      "drivers": [{"factor": "Green Jobs", "contribution": "+8,000", "note": "Installation & Maintenance"}], 
+      "risks": ["Skills mismatch"] 
+    }
+  },
+  "stakeholder_impacts": [
+    { "group": "Energy Sector Workers", "impact": "High displacement risk but retraining opportunities available.", "sentiment": "mixed" },
+    { "group": "Urban Consumers", "impact": "Short-term price increase, long-term stability.", "sentiment": "neutral" }
+  ],
   "short_term_impact": "1-3 year horizon analysis",
   "long_term_impact": "5-10+ year horizon analysis",
   "trade_offs": ["Trade-off 1", "Trade-off 2"],
