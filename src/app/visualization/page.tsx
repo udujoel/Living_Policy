@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Icon, TopNav, BottomAction, SidebarNav, ProgressBar } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getStoredSimulations, saveSimulationResult } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
-export default function VisualizationPage() {
+function VisualizationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileName = searchParams.get('file');
@@ -144,14 +144,13 @@ export default function VisualizationPage() {
                       <button 
                         className="stitch-button-primary py-3 px-5 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2"
                         onClick={() => {
-                          generatePolicyPDF({
-                            id: simId || 'temp',
-                            policyId: Date.now(),
-                            scenarioName: fileName || 'Estonia NECP 2030',
-                            timestamp: new Date().toISOString(),
-                            status: 'Completed',
-                            data: simData || {}
-                          });
+                          if (simData) {
+                             generatePolicyPDF({
+                               ...simData,
+                               scenario_id: simId || 'temp',
+                               name: fileName || 'Estonia NECP 2030',
+                             });
+                          }
                         }}
                       >
                         <Icon name="description" />
@@ -1062,14 +1061,13 @@ export default function VisualizationPage() {
               <button 
                 className="w-full py-5 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-3"
                 onClick={() => {
-                  generatePolicyPDF({
-                    id: simId || 'temp',
-                    policyId: Date.now(),
-                    scenarioName: fileName || 'Estonia NECP 2030',
-                    timestamp: new Date().toISOString(),
-                    status: 'Completed',
-                    data: simData || {}
-                  });
+                  if (simData) {
+                    generatePolicyPDF({
+                      ...simData,
+                      scenario_id: simId || 'temp',
+                      name: fileName || 'Estonia NECP 2030',
+                    });
+                  }
                 }}
               >
                 <Icon name="download" className="text-xl" />
@@ -1092,6 +1090,14 @@ export default function VisualizationPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function VisualizationPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-white bg-[#0a1118]">Loading Visualization...</div>}>
+      <VisualizationContent />
+    </Suspense>
   );
 }
 

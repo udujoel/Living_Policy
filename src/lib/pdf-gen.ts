@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { SimulationResult } from './storage';
+import { SimulationResult, Indicator } from './types';
 
 export const generatePolicyPDF = (sim: SimulationResult) => {
   const doc = new jsPDF();
@@ -26,12 +26,12 @@ export const generatePolicyPDF = (sim: SimulationResult) => {
   y = 55;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(18);
-  doc.text(sim.scenarioName || 'Analysis Report', margin, y);
+  doc.text(sim.name || sim.scenario_id || 'Analysis Report', margin, y);
   
   y += 10;
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Report ID: SIM-${sim.id.toUpperCase()} | Timestamp: ${new Date(sim.timestamp).toLocaleString()}`, margin, y);
+  doc.text(`Report ID: SIM-${sim.scenario_id?.toUpperCase() || 'UNKNOWN'} | Timestamp: ${new Date().toLocaleString()}`, margin, y);
   
   y += 15;
   doc.setDrawColor(230, 230, 230);
@@ -47,7 +47,7 @@ export const generatePolicyPDF = (sim: SimulationResult) => {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
-  const summary = sim.data?.short_term_impact || "This comprehensive report evaluates the multi-dimensional impact of the proposed policy framework. The simulation utilizes causal reasoning models to project socio-economic shifts, environmental trajectories, and global alignment benchmarks over a 10-year horizon.";
+  const summary = sim.outcomes?.economic?.summary || sim.short_term_impact || "Analysis not available.";
   const splitSummary = doc.splitTextToSize(summary, pageWidth - (margin * 2));
   doc.text(splitSummary, margin, y);
   y += (splitSummary.length * 6) + 15;
@@ -59,15 +59,20 @@ export const generatePolicyPDF = (sim: SimulationResult) => {
   doc.text('2. Key Performance Indicators', margin, y);
   y += 5;
 
+  const indicators: any[] = [];
+  ['economic', 'social', 'environmental'].forEach((category) => {
+      const group = sim.outcomes[category as keyof typeof sim.outcomes];
+      if (group && group.indicators) {
+          group.indicators.forEach((ind: Indicator) => {
+              indicators.push([ind.name, category.charAt(0).toUpperCase() + category.slice(1), ind.value, ind.change, ind.trend]);
+          });
+      }
+  });
+
   autoTable(doc, {
     startY: y,
-    head: [['Metric', 'Baseline', 'Proposed (2030)', 'Target', 'Variance']],
-    body: [
-      ['GDP Growth Rate', '1.2%', '+4.2%', '3.0%', '+1.2% Gain'],
-      ['Carbon Emissions', 'Baseline', '-18%', '-15%', 'Surpassed'],
-      ['Industrial Efficiency', 'Standard', '+8.2%', 'Optimized', 'High'],
-      ['Energy Access', '85%', '100%', 'Universal', 'Achieved'],
-    ],
+    head: [['Metric', 'Category', 'Value', 'Change', 'Trend']],
+    body: indicators.length ? indicators : [['No indicators available', '-', '-', '-', '-']],
     theme: 'grid',
     headStyles: { fillColor: [19, 127, 236], fontSize: 10 },
     styles: { fontSize: 9 },
@@ -76,21 +81,21 @@ export const generatePolicyPDF = (sim: SimulationResult) => {
 
   y = (doc as any).lastAutoTable.finalY + 15;
 
-  // 3. Stakeholder Impact Matrix (TABLE)
+  // 3. Trade-offs & Second Order Effects
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('3. Stakeholder Impact Matrix', margin, y);
+  doc.text('3. Strategic Implications', margin, y);
   y += 5;
+
+  const implications = [
+      ...(sim.trade_offs || []).map(t => ['Trade-off', t]),
+      ...(sim.second_order_effects || []).map(e => ['Second Order Effect', e])
+  ];
 
   autoTable(doc, {
     startY: y,
-    head: [['Stakeholder Group', 'Primary Impact', 'Intensity', 'Resilience Status']],
-    body: [
-      ['Tech Manufacturing', 'Resource efficiency gain', 'High', 'Positive'],
-      ['Urban Youth', 'Upskilling opportunities', 'Medium', 'Positive'],
-      ['Small-scale Farmers', 'Transition cost burden', 'High', 'Risk/Negative'],
-      ['Service Sector', 'Moderate automation risk', 'Low', 'Neutral'],
-    ],
+    head: [['Type', 'Description']],
+    body: implications.length ? implications : [['None identified', '-']],
     theme: 'striped',
     headStyles: { fillColor: [10, 17, 24], fontSize: 10 },
     styles: { fontSize: 9 },
@@ -101,87 +106,36 @@ export const generatePolicyPDF = (sim: SimulationResult) => {
   doc.addPage();
   y = 30;
 
-  // 4. Causal Reasoning Trace (TABLE)
+  // 4. SDG Alignment
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('4. Causal Reasoning Trace', margin, y);
+  doc.text('4. SDG Alignment', margin, y);
   y += 5;
+
+  const sdgs = (sim.sdg_alignment || []).map(sdg => [
+      `SDG ${sdg.sdg_id}: ${sdg.sdg_name}`,
+      sdg.impact_score,
+      sdg.justification
+  ]);
 
   autoTable(doc, {
     startY: y,
-    head: [['Chain Level', 'Node Name', 'Description', 'Confidence']],
-    body: [
-      ['Root Policy', 'Efficiency Mandate', 'Targets energy benchmarks.', 'Active'],
-      ['Immediate Effect', 'Price Shift', 'Operational cost fluctuation.', '98%'],
-      ['Secondary Shift', 'Tech Adoption', 'Surge in smart-grid investment.', 'Med.'],
-      ['Terminal Outcome', 'Emission Goal', '12M ton annual CO2 reduction.', 'High'],
-    ],
+    head: [['Goal', 'Impact', 'Justification']],
+    body: sdgs.length ? sdgs : [['No alignment data', '-', '-']],
     theme: 'grid',
     headStyles: { fillColor: [19, 127, 236] },
     margin: { left: margin }
   });
-
-  y = (doc as any).lastAutoTable.finalY + 15;
-
-  // 5. Global Framework Alignment
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('5. Global Framework Alignment', margin, y);
-  y += 5;
-
-  autoTable(doc, {
-    startY: y,
-    head: [['Framework', 'Alignment Score', 'Global Benchmark', 'Status']],
-    body: [
-      ['Paris Agreement', '94%', '1.5C Pathway', 'Leading'],
-      ['EU Taxonomy', '88%', 'Sustainable Finance', 'High'],
-      ['ILO Standards', '96%', 'Labor Rights', 'Universal'],
-      ['SDG Global Index', '82/100', 'UN 2030 Goals', 'Optimized'],
-    ],
-    theme: 'striped',
-    headStyles: { fillColor: [10, 17, 24] },
-    margin: { left: margin }
-  });
-
-  y = (doc as any).lastAutoTable.finalY + 15;
-
-  // 6. Visual Trend Projection (CUSTOM CHART)
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('6. Economic & Environmental Convergence', margin, y);
   
-  y += 10;
-  // Draw a simple coordinate system
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y + 40, margin + 100, y + 40); // X-axis
-  doc.line(margin, y, margin, y + 40); // Y-axis
-  
-  // Draw Proposed Path (Rising)
-  doc.setDrawColor(19, 127, 236);
-  doc.setLineWidth(1);
-  doc.line(margin, y + 40, margin + 25, y + 35);
-  doc.line(margin + 25, y + 35, margin + 50, y + 20);
-  doc.line(margin + 50, y + 20, margin + 75, y + 10);
-  doc.line(margin + 75, y + 10, margin + 100, y + 5);
-  
-  // Draw Baseline Path (Flat)
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineDashPattern([1, 1], 0);
-  doc.line(margin, y + 40, margin + 100, y + 38);
-  doc.setLineDashPattern([], 0); // Reset dash
-  
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Proposed Path', margin + 105, y + 5);
-  doc.text('Baseline (BAU)', margin + 105, y + 38);
-  doc.text('Year 0', margin, y + 45);
-  doc.text('Year 10', margin + 90, y + 45);
-
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('CONFIDENTIAL - STRATEGIC ANALYSIS DOCUMENT', margin, 285);
-  doc.text(`Page 2 of 2`, pageWidth - margin - 20, 285);
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for(let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.text('CONFIDENTIAL - STRATEGIC ANALYSIS DOCUMENT', margin, 285);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 20, 285);
+  }
 
-  doc.save(`${sim.scenarioName?.replace(/\s+/g, '_')}_Strategic_Report.pdf`);
+  doc.save(`${sim.name?.replace(/\s+/g, '_') || 'Policy_Analysis'}_Report.pdf`);
 };

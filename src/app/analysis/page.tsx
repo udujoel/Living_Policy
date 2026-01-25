@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Icon, TopNav, BottomAction, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { saveAnalysisResult } from '@/lib/storage';
 
-export default function AnalysisPage() {
+function AnalysisContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileName = searchParams.get('file') || 'Clean Energy Act 2024';
@@ -273,6 +273,14 @@ export default function AnalysisPage() {
       </div>
       <SidebarNav />
     </main>
+  );
+}
+
+export default function AnalysisPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-white bg-[#0a1118]">Loading Analysis...</div>}>
+      <AnalysisContent />
+    </Suspense>
   );
 }
 

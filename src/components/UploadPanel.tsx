@@ -12,10 +12,37 @@ interface UploadPanelProps {
 
 export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }) => {
   const [text, setText] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (file) {
+    if (!file) return;
+
+    if (file.type === 'application/pdf') {
+      setIsParsing(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/parse', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!res.ok) throw new Error('Failed to parse PDF');
+        
+        const data = await res.json();
+        if (data.text) {
+          setText(data.text);
+        } else {
+          throw new Error(data.error || 'No text extracted');
+        }
+      } catch (error) {
+        console.error('PDF parsing error:', error);
+        alert('Failed to extract text from PDF. Please ensure it is a valid text-based PDF.');
+      } finally {
+        setIsParsing(false);
+      }
+    } else {
       const reader = new FileReader();
       reader.onload = () => {
         const content = reader.result as string;
@@ -27,8 +54,9 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'text/plain': ['.txt'], 'application/pdf': ['.pdf'] }, // Basic text support for now
+    accept: { 'text/plain': ['.txt'], 'application/pdf': ['.pdf'] },
     multiple: false,
+    disabled: isParsing || isLoading
   });
 
   return (
@@ -36,7 +64,7 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }
       <div className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Policy Input</h2>
         <p className="text-sm text-muted-foreground">
-          Upload a policy document or paste the text below to start the simulation.
+          Upload a policy document (PDF/TXT) or paste the text below to start the simulation.
         </p>
       </div>
 
@@ -44,15 +72,16 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }
         {...getRootProps()}
         className={cn(
           "border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all",
-          isDragActive ? "border-primary bg-primary/5" : "hover:border-primary/50 hover:bg-muted/50"
+          isDragActive ? "border-primary bg-primary/5" : "hover:border-primary/50 hover:bg-muted/50",
+          (isParsing || isLoading) && "opacity-50 cursor-not-allowed"
         )}
       >
         <input {...getInputProps()} />
         <div className="p-3 bg-secondary rounded-full">
-          <Upload className="w-6 h-6 text-primary" />
+          {isParsing ? <Loader2 className="w-6 h-6 text-primary animate-spin" /> : <Upload className="w-6 h-6 text-primary" />}
         </div>
         <div className="text-center">
-          <p className="font-medium">Drop policy file here</p>
+          <p className="font-medium">{isParsing ? "Extracting text..." : "Drop policy file here"}</p>
           <p className="text-xs text-muted-foreground mt-1">Supports PDF, TXT</p>
         </div>
       </div>
@@ -63,6 +92,7 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }
           placeholder="Or paste policy text here..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          disabled={isParsing || isLoading}
         />
         <div className="absolute top-2 right-2 flex items-center gap-2">
           <FileText className="w-4 h-4 text-muted-foreground" />
@@ -71,7 +101,7 @@ export const UploadPanel: React.FC<UploadPanelProps> = ({ onAnalyze, isLoading }
 
       <button
         onClick={() => text && onAnalyze(text)}
-        disabled={isLoading || !text}
+        disabled={isLoading || isParsing || !text}
         className="stitch-button-primary flex items-center justify-center gap-2 py-3"
       >
         {isLoading ? (

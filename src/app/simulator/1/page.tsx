@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, TopNav, SidebarNav, ProgressBar, StatusPill } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { saveSimulationResult, getAnalysisResult } from '@/lib/storage';
 
-export default function SimulatorWorkspace1() {
+function SimulatorWorkspaceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileName = searchParams.get('file') || '';
@@ -711,6 +711,21 @@ export default function SimulatorWorkspace1() {
       </div>
       <SidebarNav />
     </main>
+  );
+}
+
+export default function SimulatorWorkspace1() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-[#0a1118]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm font-medium animate-pulse">Loading Simulation Environment...</p>
+        </div>
+      </div>
+    }>
+      <SimulatorWorkspaceContent />
+    </Suspense>
   );
 }
 
