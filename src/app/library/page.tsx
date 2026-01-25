@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Icon, TopNav, SidebarNav, SearchBar } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { getStoredSimulations } from '@/lib/storage';
+import { getStoredSimulations, deleteSimulation } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 export default function PolicyLibraryPage() {
@@ -17,13 +17,30 @@ export default function PolicyLibraryPage() {
     setStoredSimulations(getStoredSimulations());
   }, []);
 
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this policy simulation?')) {
+      deleteSimulation(id);
+      setStoredSimulations(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  const getCategory = (title: string) => {
+    const t = title.toLowerCase();
+    if (t.includes('health') || t.includes('care')) return 'HEALTH';
+    if (t.includes('edu') || t.includes('school')) return 'EDUCATION';
+    if (t.includes('urban') || t.includes('city') || t.includes('hous')) return 'URBAN';
+    if (t.includes('env') || t.includes('green') || t.includes('carbon')) return 'ENVIRONMENT';
+    return 'POLICY ANALYSIS';
+  };
+
   const policies = [
     ...storedSimulations.map(sim => ({
       id: sim.id,
       title: sim.scenarioName ? `${sim.scenarioName}` : 'Unnamed Analysis',
-      desc: `Comprehensive multi-dimensional impact report including Causal Trace, SDG Alignment, and Economic Projection.`,
+      desc: sim.data?.reasoning_summary || `Comprehensive multi-dimensional impact report including Causal Trace, SDG Alignment, and Economic Projection.`,
       date: new Date(sim.timestamp).toLocaleDateString(),
-      category: 'POLICY ANALYSIS',
+      category: getCategory(sim.scenarioName || ''),
       status: sim.status || 'Completed',
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -54,7 +71,7 @@ export default function PolicyLibraryPage() {
 
         {/* Filters */}
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {['All', 'Urban', 'Health', 'Education'].map((f) => (
+          {['All', 'Environment', 'Urban', 'Health', 'Education'].map((f) => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
@@ -124,6 +141,13 @@ export default function PolicyLibraryPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  <button 
+                    onClick={(e) => handleDelete(p.id, e)}
+                    className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-muted-foreground hover:text-red-400 hover:bg-white/10 transition-all group/delete"
+                    title="Delete"
+                  >
+                    <Icon name="delete" className="text-sm group-hover/delete:animate-shake" />
+                  </button>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();

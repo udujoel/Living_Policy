@@ -61,6 +61,12 @@ export const saveSimulationResult = (result: SimulationResult) => {
   }
 };
 
+export const deleteSimulation = (id: string) => {
+  if (typeof window === 'undefined') return;
+  const current = getStoredSimulations();
+  localStorage.setItem(SIM_KEY, JSON.stringify(current.filter(s => s.id !== id)));
+};
+
 export const getStoredSimulations = (): SimulationResult[] => {
   if (typeof window === 'undefined') return [];
   try {
