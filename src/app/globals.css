@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+:root {
+  --background-light: #f6f7f8;
+  --background-dark: #101922;
+  --foreground: #F1F5F9;
+  --card: #1a2632;
+  --card-alt: #192633;
+  --primary: #137fec;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #334155;
+  --accent-foreground: #F1F5F9;
+  --destructive: #EF4444;
+  --destructive-foreground: #F1F5F9;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.05);
+  --ring: #137fec;
+  --radius: 0.75rem;
+
+  --font-public-sans: 'Public Sans', sans-serif;
+  --font-space-grotesk: 'Space Grotesk', sans-serif;
+}
+
+@theme inline {
+  --color-background-light: var(--background-light);
+  --color-background-dark: var(--background-dark);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-alt: var(--card-alt);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary-hover: #166bd1;
+  --radius-xl: var(--radius);
+  
+  --font-sans: var(--font-public-sans);
+  --font-mono: var(--font-space-grotesk);
+}
+
+body {
+  background: var(--background-dark);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* Component Patterns */
+
+.stitch-card {
+  @apply bg-card border border-border rounded-xl shadow-sm transition-all duration-200;
+}
+
+.stitch-button-primary {
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium shadow-md transition-all active:scale-[0.98];
+}
+
+.stitch-button-secondary {
+  @apply bg-card border border-border hover:bg-white/5 text-foreground px-4 py-2 rounded-lg font-medium transition-all;
+}
+
+.stitch-input {
+  @apply bg-input border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground/50;
+}
+
+.status-pill {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border;
+}
+
+.filter-chip {
+  @apply px-4 py-1.5 rounded-full text-xs font-semibold border transition-all;
+}
+
+.progress-bar {
+  @apply h-1.5 w-full bg-white/10 rounded-full overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-primary transition-all duration-500;
+}
+
+.icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.max-container {
+  @apply w-full mx-auto min-h-screen relative bg-background-dark;
+}
+
+@media (min-width: 1024px) {
+  .max-container {
+    @apply max-w-none px-0;
+  }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-white/20;
+}

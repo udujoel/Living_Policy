@@ -1,0 +1,19 @@
+Rural Connectivity and Digital Equity Act
+
+Goals:
+Ensure 99% broadband penetration in rural counties (defined as <100 persons/sq mile) by 2030. The target speed is 100/20 Mbps.
+
+Key Levers:
+- Infrastructure Grant: $5000 per new household connection.
+- Spectrum Tax Credit: 20% reduction for providers covering "dead zones".
+- Device Voucher: $200 for low-income rural households.
+
+Constraints:
+- Geographic: Topographic challenges in Appalachian and Rocky Mountain regions.
+- Time: 6-year rollout period.
+
+Impacted Populations:
+- Rural students
+- Small-scale farmers
+- Telehealth providers
+- Regional ISPs
