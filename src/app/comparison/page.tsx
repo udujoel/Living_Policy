@@ -5,7 +5,7 @@ import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { SimulationResult } from '@/lib/types';
 import Link from 'next/link';
-import { getStoredSimulations } from '@/lib/storage';
+import { getStoredSimulations, fetchSimulations } from '@/lib/storage';
 
 // Mock baseline generator
 const generateBaseline = (current: SimulationResult): SimulationResult => {
@@ -49,57 +49,59 @@ function ComparisonPageContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const allScenarios: SimulationResult[] = [];
+    const loadScenarios = async () => {
+      const allScenarios: SimulationResult[] = [];
 
-    // 1. Load saved simulations
-    const savedSims = getStoredSimulations();
-    savedSims.forEach(sim => {
-      // Adapt stored format to SimulationResult if needed, or assume data structure matches
-      if (sim.data) {
-        allScenarios.push({
-          ...sim.data,
-          scenario_id: sim.id, // Use outer ID
-          name: sim.scenarioName || sim.data.name || 'Untitled Scenario'
-        });
+      // 1. Load saved simulations
+      const savedSims = await fetchSimulations();
+      savedSims.forEach(sim => {
+        // Adapt stored format to SimulationResult if needed, or assume data structure matches
+        if (sim.data) {
+          allScenarios.push({
+            ...sim.data,
+            scenario_id: sim.id, // Use outer ID
+            name: sim.scenarioName || sim.data.name || 'Untitled Scenario'
+          });
+        }
+      });
+
+      // 2. Load current draft simulation
+      const currentDraftJson = localStorage.getItem('simulationResult');
+      if (currentDraftJson) {
+        try {
+          const currentDraft: SimulationResult = JSON.parse(currentDraftJson);
+          // Add as "Current Draft"
+          allScenarios.push({
+            ...currentDraft,
+            scenario_id: 'current_draft',
+            name: `Draft: ${currentDraft.name || 'Analysis in Progress'}`
+          });
+
+          // 3. Generate Baseline from draft (or first saved sim if no draft)
+          const base = generateBaseline(currentDraft);
+          allScenarios.unshift(base); // Add baseline to top
+        } catch (e) {
+          console.error("Failed to parse current draft", e);
+        }
+      } else if (allScenarios.length > 0) {
+        // If no draft but saved sims, generate baseline from first saved
+        const base = generateBaseline(allScenarios[0]);
+        allScenarios.unshift(base);
       }
-    });
 
-    // 2. Load current draft simulation
-    const currentDraftJson = localStorage.getItem('simulationResult');
-    if (currentDraftJson) {
-      try {
-        const currentDraft: SimulationResult = JSON.parse(currentDraftJson);
-        // Add as "Current Draft"
-        allScenarios.push({
-          ...currentDraft,
-          scenario_id: 'current_draft',
-          name: `Draft: ${currentDraft.name || 'Analysis in Progress'}`
-        });
+      setScenarios(allScenarios);
 
-        // 3. Generate Baseline from draft (or first saved sim if no draft)
-        const base = generateBaseline(currentDraft);
-        allScenarios.unshift(base); // Add baseline to top
-      } catch (e) {
-        console.error("Failed to parse current draft", e);
-      }
-    } else if (allScenarios.length > 0) {
-      // If no draft but saved sims, generate baseline from first saved
-      const base = generateBaseline(allScenarios[0]);
-      allScenarios.unshift(base);
-    }
+      // Default selection: Baseline + (Draft OR First Saved)
+      const defaults = [];
+      const baseline = allScenarios.find(s => s.scenario_id === 'baseline');
+      if (baseline) defaults.push(baseline.scenario_id);
+      
+      const second = allScenarios.find(s => s.scenario_id === 'current_draft') || allScenarios.find(s => s.scenario_id !== 'baseline');
+      if (second) defaults.push(second.scenario_id);
 
-    setScenarios(allScenarios);
-
-    // Default selection: Baseline + (Draft OR First Saved)
-    const defaults = [];
-    const baseline = allScenarios.find(s => s.scenario_id === 'baseline');
-    if (baseline) defaults.push(baseline.scenario_id);
-    
-    const second = allScenarios.find(s => s.scenario_id === 'current_draft') || allScenarios.find(s => s.scenario_id !== 'baseline');
-    if (second) defaults.push(second.scenario_id);
-
-    setSelectedIds(defaults);
-
+      setSelectedIds(defaults);
+    };
+    loadScenarios();
   }, []);
 
   const toggleSelection = (id: string) => {

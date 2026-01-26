@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
-import { getStoredSimulations } from '@/lib/storage';
+import { getStoredSimulations, fetchSimulations } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 function ReportContent() {
@@ -14,11 +14,14 @@ function ReportContent() {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    const sims = getStoredSimulations();
-    const currentSim = simId ? sims.find(s => s.id === simId) : sims[0];
-    if (currentSim) {
-      setSimData(currentSim.data);
-    }
+    const loadData = async () => {
+      const sims = await fetchSimulations();
+      const currentSim = simId ? sims.find(s => s.id === simId) : sims[0];
+      if (currentSim) {
+        setSimData(currentSim.data);
+      }
+    };
+    loadData();
   }, [simId]);
 
   const handleExport = () => {

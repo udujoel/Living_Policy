@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { Icon, TopNav, BottomAction, SidebarNav, ProgressBar } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getStoredSimulations, saveSimulationResult } from '@/lib/storage';
+import { getStoredSimulations, saveSimulationResult, fetchSimulations } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 function VisualizationContent() {
@@ -22,11 +22,14 @@ function VisualizationContent() {
   const [simData, setSimData] = useState<any>(null);
 
   useEffect(() => {
-    const sims = getStoredSimulations();
-    const currentSim = simId ? sims.find(s => s.id === simId) : sims[0];
-    if (currentSim) {
-      setSimData(currentSim.data);
-    }
+    const loadData = async () => {
+      const sims = await fetchSimulations();
+      const currentSim = simId ? sims.find(s => s.id === simId) : sims[0];
+      if (currentSim) {
+        setSimData(currentSim.data);
+      }
+    };
+    loadData();
   }, [simId]);
 
   // Helper to safely get indicator values
@@ -39,7 +42,7 @@ function VisualizationContent() {
   const carbonIndicator = getIndicator('environmental', 'carbon');
   const jobsIndicator = getIndicator('economic', 'job') || getIndicator('social', 'employment');
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     setIsDeploying(true);
     
     // Create the simulation record
@@ -53,11 +56,11 @@ function VisualizationContent() {
     };
 
     // Simulate deployment process
+    await saveSimulationResult(newSim);
     setTimeout(() => {
-      saveSimulationResult(newSim);
       setIsDeploying(false);
       setShowSuccess(true);
-    }, 2500);
+    }, 1000);
   };
 
   return (

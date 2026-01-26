@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Icon, TopNav, SidebarNav, SearchBar } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { getStoredSimulations, deleteSimulation } from '@/lib/storage';
+import { getStoredSimulations, deleteSimulation, fetchSimulations } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 export default function PolicyLibraryPage() {
@@ -14,14 +14,19 @@ export default function PolicyLibraryPage() {
   const [storedSimulations, setStoredSimulations] = useState<any[]>([]);
 
   useEffect(() => {
-    setStoredSimulations(getStoredSimulations());
+    const loadSims = async () => {
+      const sims = await fetchSimulations();
+      setStoredSimulations(sims);
+    };
+    loadSims();
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this policy simulation?')) {
-      deleteSimulation(id);
-      setStoredSimulations(prev => prev.filter(s => s.id !== id));
+      await deleteSimulation(id);
+      const sims = await fetchSimulations();
+      setStoredSimulations(sims);
     }
   };
 
