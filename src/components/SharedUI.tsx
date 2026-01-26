@@ -70,9 +70,29 @@ export const SearchBar = ({ placeholder, className, value, onChange }: { placeho
   </div>
 );
 
+import { supabase } from '@/lib/supabase';
+
 export const TopNav = ({ title, showBack = true, rightElement }: { title: string, showBack?: boolean, rightElement?: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const [user, setUser] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
   
   const isActive = (path: string) => {
     if (path === '/dashboard' && pathname === '/dashboard') return true;
@@ -121,9 +141,32 @@ export const TopNav = ({ title, showBack = true, rightElement }: { title: string
                <button className="p-2 hover:bg-white/5 rounded-full transition-colors text-muted-foreground hover:text-white">
                  <Icon name="share" className="text-xl" />
                </button>
-               <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 cursor-pointer hover:border-primary transition-colors">
-                 <img src="https://ui-avatars.com/api/?name=Alex+Rivera&background=137fec&color=fff" alt="User" />
-               </div>
+               {user ? (
+                 <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 cursor-pointer hover:border-primary transition-colors bg-white/10 flex items-center justify-center group relative">
+                      {/* Avatar or Initial */}
+                      <span className="font-bold text-sm text-white">{user.email?.charAt(0).toUpperCase()}</span>
+                      
+                      {/* Dropdown (Simple Logout) */}
+                      <div className="absolute top-full right-0 mt-2 w-48 bg-[#0d141b] border border-white/10 rounded-xl shadow-2xl p-2 hidden group-hover:block animate-in fade-in slide-in-from-top-2">
+                        <div className="text-xs text-muted-foreground px-3 py-2 border-b border-white/5 mb-2 truncate">
+                          {user.email}
+                        </div>
+                        <button 
+                          onClick={handleLogout}
+                          className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Icon name="logout" className="text-base" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                 </div>
+               ) : (
+                 <Link href="/login" className="stitch-button-primary px-5 py-2 text-xs font-bold uppercase tracking-widest">
+                   Sign In
+                 </Link>
+               )}
              </>
            )}
         </div>
