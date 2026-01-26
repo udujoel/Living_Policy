@@ -5,7 +5,8 @@ import { Icon, TopNav, BottomAction, SearchBar, SidebarNav } from '@/components/
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { SimulationResult, RegionalImpact } from '@/lib/types';
+import { SimulationResult as SimData, RegionalImpact } from '@/lib/types';
+import { SimulationResult as StoredSim } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 // Default fallback data for initial view or when no simulation exists
@@ -62,7 +63,7 @@ function MapPageContent() {
   const [activeLayer, setActiveLayer] = useState('heatmap');
   const [regionalData, setRegionalData] = useState<RegionalImpact[]>(DEFAULT_REGIONAL_DATA);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [fullSimulation, setFullSimulation] = useState<SimulationResult | null>(null);
+  const [fullSimulation, setFullSimulation] = useState<StoredSim | null>(null);
 
   useEffect(() => {
     // Load simulation data from local storage if available
@@ -71,7 +72,7 @@ function MapPageContent() {
     try {
       const stored = localStorage.getItem('lps_simulations');
       if (stored) {
-        const allSims: SimulationResult[] = JSON.parse(stored);
+        const allSims: StoredSim[] = JSON.parse(stored);
         if (allSims.length > 0) {
            // Sort by timestamp desc
            allSims.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -85,10 +86,13 @@ function MapPageContent() {
         // Legacy fallback
         const saved = localStorage.getItem('simulationResult');
         if (saved) {
-            const data: SimulationResult = JSON.parse(saved);
+            const data: StoredSim = JSON.parse(saved);
             setFullSimulation(data);
-            if (data.regional_analysis && data.regional_analysis.length > 0) {
-                setRegionalData(data.regional_analysis);
+            if (data.data && data.data.regional_analysis && data.data.regional_analysis.length > 0) {
+                setRegionalData(data.data.regional_analysis);
+            } else if ((data as any).regional_analysis) {
+                 // Handle legacy format where regional_analysis was top level
+                 setRegionalData((data as any).regional_analysis);
             }
         }
       }
@@ -101,9 +105,9 @@ function MapPageContent() {
     setIsGeneratingReport(true);
     
     // Use the real PDF generator if we have data
-    if (fullSimulation) {
+    if (fullSimulation && fullSimulation.data) {
       try {
-        generatePolicyPDF(fullSimulation);
+        generatePolicyPDF(fullSimulation.data);
         setTimeout(() => {
              setIsGeneratingReport(false);
              // Optional: Show success toast or notification
@@ -112,6 +116,12 @@ function MapPageContent() {
         console.error("PDF Gen Failed", e);
         setIsGeneratingReport(false);
       }
+    } else if (fullSimulation && (fullSimulation as any).outcomes) {
+         // Handle legacy case where fullSimulation IS the data
+         try {
+            generatePolicyPDF(fullSimulation as any);
+            setTimeout(() => { setIsGeneratingReport(false); }, 1000);
+         } catch (e) { setIsGeneratingReport(false); }
     } else {
         // Fallback mock if no data (shouldn't happen in real flow)
         setTimeout(() => {
