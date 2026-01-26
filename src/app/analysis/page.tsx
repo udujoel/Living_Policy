@@ -93,6 +93,20 @@ function AnalysisContent() {
 
   const jurisdiction = getJurisdiction();
 
+  const handleSaveDraft = () => {
+    // Only save if data is available
+    if (analysisData) {
+      saveAnalysisResult({
+        fileName,
+        data: analysisData,
+        timestamp: new Date().toISOString()
+      });
+      alert('Draft saved successfully to your dashboard.');
+    } else {
+      alert('Analysis not yet complete. Please wait for the extraction to finish.');
+    }
+  };
+
   return (
     <main className="max-container flex flex-col min-h-screen pb-24 lg:pb-0 bg-[#0a1118]">
       <TopNav title="Policy Analysis" />
@@ -246,7 +260,10 @@ function AnalysisContent() {
         {/* Right Side: Action Panel (Desktop Sticky) */}
         <div className="p-6 lg:p-12 lg:w-[400px] flex flex-col gap-6 lg:bg-card-alt/10 lg:border-l border-white/5">
           <div className="flex flex-col gap-4 mt-auto">
-            <button className="stitch-button-secondary w-full py-4 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-widest">
+            <button 
+              onClick={handleSaveDraft}
+              className="stitch-button-secondary w-full py-4 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
+            >
               <Icon name="save" className="text-xl" />
               <span>Save Draft</span>
             </button>
