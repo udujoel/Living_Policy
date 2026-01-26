@@ -127,7 +127,7 @@ Return a JSON object with the following structure:
       "key_metrics": [{ "label": "Transport", "value": "0%", "trend": "stable" }], 
       "summary": "Impact summary..." 
     }
-  ]
+  ],
   "external_data_sources": [
     { "source": "World Bank API", "metric": "Gini Index", "year": "2023", "value": "32.4", "url": "https://data.worldbank.org/" }
   ],
