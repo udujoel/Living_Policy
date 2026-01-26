@@ -20,27 +20,39 @@ function AnalysisContent() {
     const runAnalysis = async () => {
       setIsAnalyzing(true);
       try {
-        let contextualText = `Draft Policy: ${fileName}. This regulation mandates a transition to renewable energy by 2030, targeting a 40% mix. It assumes stable federal tax credits and infrastructure upgrades. Budget is capped at $2.5B annually.`;
-
-        // Enhance prompt for the Estonia NECP specifically
-        if (fileName.includes('Estonia') || fileName.includes('Energy and Climate Plan')) {
-          contextualText = `
-            Document: Estonia's National Energy and Climate Plan (NECP) 2030.
-            Overview: This plan outlines Estonia's strategy to reach 2030 climate goals. 
-            Key Targets: 
-            - Reduce greenhouse gas emissions by 70% compared to 1990 levels.
-            - Renewable energy must account for at least 42% of final energy consumption.
-            - Energy efficiency: final energy consumption should not exceed 32-33 TWh.
-            Levers: 
-            - Carbon Tax (EU ETS price dependency)
-            - Wind Farm Subsidies (Offshore and Onshore)
-            - Shale Oil Exit strategy speed
-            - Public Transport Electrification budget
-            Constraints: 
-            - Security of supply (must maintain base load)
-            - Socio-economic impact on Ida-Viru county (shale oil workers)
-            - Budget ceiling for energy transition: €2.4 Billion.
-          `;
+        let contextualText = '';
+        
+        // Try to load real extracted text first
+        const storedText = localStorage.getItem('current_policy_text');
+        const storedName = localStorage.getItem('current_policy_name');
+        
+        if (storedText && storedName === fileName && storedText.length > 50) {
+            contextualText = `Document Content:\n${storedText.substring(0, 30000)}`; // Limit context
+            console.log("Using real extracted text for analysis.");
+        } else {
+            // Fallback to hardcoded mock logic if no text found
+            contextualText = `Draft Policy: ${fileName}. This regulation mandates a transition to renewable energy by 2030, targeting a 40% mix. It assumes stable federal tax credits and infrastructure upgrades. Budget is capped at $2.5B annually.`;
+    
+            // Enhance prompt for the Estonia NECP specifically
+            if (fileName.includes('Estonia') || fileName.includes('Energy and Climate Plan')) {
+              contextualText = `
+                Document: Estonia's National Energy and Climate Plan (NECP) 2030.
+                Overview: This plan outlines Estonia's strategy to reach 2030 climate goals. 
+                Key Targets: 
+                - Reduce greenhouse gas emissions by 70% compared to 1990 levels.
+                - Renewable energy must account for at least 42% of final energy consumption.
+                - Energy efficiency: final energy consumption should not exceed 32-33 TWh.
+                Levers: 
+                - Carbon Tax (EU ETS price dependency)
+                - Wind Farm Subsidies (Offshore and Onshore)
+                - Shale Oil Exit strategy speed
+                - Public Transport Electrification budget
+                Constraints: 
+                - Security of supply (must maintain base load)
+                - Socio-economic impact on Ida-Viru county (shale oil workers)
+                - Budget ceiling for energy transition: €2.4 Billion.
+              `;
+            }
         }
 
         const response = await fetch('/api/analyze', {

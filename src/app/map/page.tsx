@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SimulationResult, RegionalImpact } from '@/lib/types';
+import { generatePolicyPDF } from '@/lib/pdf-gen';
 
 // Default fallback data for initial view or when no simulation exists
 const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
@@ -61,42 +62,62 @@ function MapPageContent() {
   const [activeLayer, setActiveLayer] = useState('heatmap');
   const [regionalData, setRegionalData] = useState<RegionalImpact[]>(DEFAULT_REGIONAL_DATA);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [fullSimulation, setFullSimulation] = useState<SimulationResult | null>(null);
 
   useEffect(() => {
     // Load simulation data from local storage if available
     // Try to get the specific simulation result first (from the URL query param logic if we had it, or just latest)
     // For MVP, we'll try to find the most recent simulation run
-    const allSims = Object.keys(localStorage)
-      .filter(k => k.startsWith('sim_result_'))
-      .map(k => JSON.parse(localStorage.getItem(k) || '{}'))
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    if (allSims.length > 0) {
-      const latestSim = allSims[0];
-      if (latestSim.data && latestSim.data.regional_analysis && latestSim.data.regional_analysis.length > 0) {
-        setRegionalData(latestSim.data.regional_analysis);
-      }
-    } else {
-        // Fallback to legacy single key if array is empty
+    try {
+      const stored = localStorage.getItem('lps_simulations');
+      if (stored) {
+        const allSims: SimulationResult[] = JSON.parse(stored);
+        if (allSims.length > 0) {
+           // Sort by timestamp desc
+           allSims.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+           const latestSim = allSims[0];
+           setFullSimulation(latestSim);
+           if (latestSim.data && latestSim.data.regional_analysis && latestSim.data.regional_analysis.length > 0) {
+             setRegionalData(latestSim.data.regional_analysis);
+           }
+        }
+      } else {
+        // Legacy fallback
         const saved = localStorage.getItem('simulationResult');
         if (saved) {
-            try {
-                const data: SimulationResult = JSON.parse(saved);
-                if (data.regional_analysis && data.regional_analysis.length > 0) {
-                    setRegionalData(data.regional_analysis);
-                }
-            } catch (e) {
-                console.error("Failed to parse simulation data", e);
+            const data: SimulationResult = JSON.parse(saved);
+            setFullSimulation(data);
+            if (data.regional_analysis && data.regional_analysis.length > 0) {
+                setRegionalData(data.regional_analysis);
             }
         }
+      }
+    } catch (e) {
+      console.error("Failed to parse simulation data", e);
     }
   }, []);
 
   const handleGenerateReport = () => {
     setIsGeneratingReport(true);
-    setTimeout(() => {
-      router.push('/report');
-    }, 2000);
+    
+    // Use the real PDF generator if we have data
+    if (fullSimulation) {
+      try {
+        generatePolicyPDF(fullSimulation);
+        setTimeout(() => {
+             setIsGeneratingReport(false);
+             // Optional: Show success toast or notification
+        }, 1000);
+      } catch (e) {
+        console.error("PDF Gen Failed", e);
+        setIsGeneratingReport(false);
+      }
+    } else {
+        // Fallback mock if no data (shouldn't happen in real flow)
+        setTimeout(() => {
+          router.push('/report');
+        }, 2000);
+    }
   };
 
   const getColor = (status: string) => {

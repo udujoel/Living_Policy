@@ -94,6 +94,12 @@ export default function UploadPage() {
             status: 'Parsed' as const
           };
           
+          // Save extracted text to local storage for Analysis page to use
+          if (data.text) {
+            localStorage.setItem('current_policy_text', data.text);
+            localStorage.setItem('current_policy_name', data.name);
+          }
+          
           saveUpload(newFile);
           setUploads(prev => [newFile, ...prev]);
           setAnalyzingFile(newFile);
