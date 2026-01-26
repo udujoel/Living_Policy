@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2';
-import pdf from 'pdf-parse';
+
+// Use require for CommonJS module compatibility
+const pdf = require('pdf-parse');
 
 export const dynamic = 'force-dynamic';
 
