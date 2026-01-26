@@ -22,15 +22,26 @@ export default function DashboardPage() {
     setRecentUploads(getStoredUploads());
   };
 
-  const handleDownload = (e: React.MouseEvent, name: string) => {
+  const handleDownload = (e: React.MouseEvent, file: UploadedFile) => {
     e.preventDefault();
     e.stopPropagation();
-    const blob = new Blob(["Policy content for " + name], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    a.click();
+    
+    if (file.source && file.source.startsWith('http')) {
+      // Use R2/Public URL if available
+      const a = document.createElement('a');
+      a.href = file.source;
+      a.target = '_blank';
+      a.download = file.name;
+      a.click();
+    } else {
+      // Fallback for old local files
+      const blob = new Blob(["Policy content for " + file.name], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+    }
   };
 
   const staticProjects: any[] = [];
@@ -160,7 +171,7 @@ export default function DashboardPage() {
                   
                   <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
-                      onClick={(e) => handleDownload(e, f.name)}
+                      onClick={(e) => handleDownload(e, f)}
                       className="p-2 hover:bg-white/10 rounded-lg text-muted-foreground hover:text-white transition-colors"
                       title="Download"
                     >
