@@ -317,7 +317,7 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, i
       {metrics?.map((m: any, i: number) => (
         <div key={i} className="flex flex-col bg-white/5 p-2 rounded-lg border border-white/5">
           <span className="text-[8px] font-bold text-muted-foreground uppercase">{m.label}</span>
-          <span className="text-xs font-bold font-mono text-foreground/90">{m.val}</span>
+          <span className="text-xs font-bold font-mono text-foreground/90">{m.value}</span>
         </div>
       ))}
     </div>
