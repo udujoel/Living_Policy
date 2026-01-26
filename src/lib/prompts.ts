@@ -128,6 +128,20 @@ Return a JSON object with the following structure:
       "summary": "Impact summary..." 
     }
   ]
+  "external_data_sources": [
+    { "source": "World Bank API", "metric": "Gini Index", "year": "2023", "value": "32.4", "url": "https://data.worldbank.org/" }
+  ],
+  "causal_graph": {
+    "nodes": [
+      { "id": "n1", "label": "Carbon Tax", "type": "policy" },
+      { "id": "n2", "label": "Industrial Cost", "type": "factor" },
+      { "id": "n3", "label": "Emissions", "type": "outcome" }
+    ],
+    "edges": [
+      { "source": "n1", "target": "n2", "strength": 0.8, "description": "Direct financial burden" },
+      { "source": "n2", "target": "n3", "strength": -0.6, "description": "Efficiency incentive" }
+    ]
+  }
 }
 
 Policy Analysis Context:

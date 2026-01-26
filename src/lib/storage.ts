@@ -160,9 +160,47 @@ export const getStoredSimulations = (): SimulationResult[] => {
   return getStoredSimulationsLocal();
 };
 
-export const saveAnalysisResult = (result: AnalysisResult) => {
+export const fetchAnalyses = async (): Promise<AnalysisResult[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session?.user) {
+    const { data, error } = await supabase
+      .from('analyses')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Supabase fetch analyses error:', error);
+      return [];
+    }
+    
+    return data.map((row: any) => ({
+      fileName: row.file_name,
+      data: row.data,
+      timestamp: row.created_at
+    }));
+  }
+  return [];
+};
+
+export const saveAnalysisResult = async (result: AnalysisResult) => {
   if (typeof window === 'undefined') return;
+  
+  // Always save local for quick access during session
   localStorage.setItem(`${ANALYSIS_KEY}_${result.fileName}`, JSON.stringify(result));
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    const payload = {
+      user_id: session.user.id,
+      file_name: result.fileName,
+      data: result.data, // Only saving the extraction data, not the full doc
+      created_at: result.timestamp || new Date().toISOString()
+    };
+    
+    const { error } = await supabase.from('analyses').insert(payload);
+    if (error) console.error('Supabase save analysis error:', error);
+  }
 };
 
 export const getAnalysisResult = (fileName: string): AnalysisResult | null => {

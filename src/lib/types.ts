@@ -51,6 +51,21 @@ export interface SimulationResult {
   assumptions: Assumption[];
   sdg_alignment: SDGAlignment[];
   regional_analysis?: RegionalImpact[];
+  external_data_sources?: ExternalDataSource[]; // New: Track data provenance
+  causal_graph?: CausalGraph; // New: Advanced model structure
+}
+
+export interface ExternalDataSource {
+  source: string;
+  metric: string;
+  year: string;
+  value: string;
+  url?: string;
+}
+
+export interface CausalGraph {
+  nodes: { id: string; label: string; type: 'policy' | 'factor' | 'outcome' }[];
+  edges: { source: string; target: string; strength: number; description: string }[];
 }
 
 export interface RegionalImpact {

@@ -52,7 +52,8 @@ function VisualizationContent() {
       scenarioName: fileName || 'Estonia NECP 2030',
       timestamp: new Date().toISOString(),
       status: 'Completed' as const,
-      data: simData || {}
+      data: simData || {},
+      is_public: true // Enable public sharing by default for now, or add toggle
     };
 
     // Simulate deployment process
@@ -61,6 +62,12 @@ function VisualizationContent() {
       setIsDeploying(false);
       setShowSuccess(true);
     }, 1000);
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/report?simId=${simId}`;
+    navigator.clipboard.writeText(url);
+    alert('Public report link copied to clipboard!');
   };
 
   return (
@@ -98,6 +105,11 @@ function VisualizationContent() {
                   <ScenarioBtn label="Baseline" active={selectedScenario === 'baseline'} onClick={() => setSelectedScenario('baseline')} />
                   <ScenarioBtn label="Proposed" active={selectedScenario === 'proposed'} onClick={() => setSelectedScenario('proposed')} primary />
                 </div>
+                
+                <button onClick={handleShare} className="flex items-center gap-2 text-[10px] font-bold text-primary uppercase tracking-widest hover:text-white transition-colors">
+                  <Icon name="share" className="text-sm" />
+                  Share Result
+                </button>
               </div>
             </div>
           </div>
