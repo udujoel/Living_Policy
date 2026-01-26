@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2';
 
-// Use require for CommonJS module compatibility
-const pdf = require('pdf-parse');
+// Use legacy build of pdfjs-dist for Node.js compatibility
+const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
 
     // Upload to R2
     const path = `uploads/${Date.now()}-${file.name}`;
-    // uploadToR2 expects File, but we can re-use the file object since we just read it into a buffer separately
     const url = await uploadToR2(file, path);
 
     if (!url) {
@@ -32,8 +31,17 @@ export async function POST(req: NextRequest) {
     let extractedText = '';
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         try {
-            const data = await pdf(buffer);
-            extractedText = data.text;
+            const uint8Array = new Uint8Array(buffer);
+            const loadingTask = pdfjs.getDocument({ data: uint8Array });
+            const doc = await loadingTask.promise;
+            
+            const maxPages = Math.min(doc.numPages, 50); // Limit pages to avoid timeout
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await doc.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map((item: any) => item.str).join(' ');
+                extractedText += pageText + '\n';
+            }
         } catch (e) {
             console.error("PDF Parse Error", e);
             extractedText = "Error extracting text from PDF.";
