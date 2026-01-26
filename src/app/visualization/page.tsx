@@ -20,6 +20,8 @@ function VisualizationContent() {
   const [activeView, setActiveView] = useState<'metrics' | 'sdg' | 'worldbank' | 'alignment' | 'causal' | 'comparison' | 'trace'>('metrics');
   const [activeComparisonTab, setActiveComparisonTab] = useState<'Economy' | 'Environment' | 'Social'>('Economy');
   const [simData, setSimData] = useState<any>(null);
+  const [wbData, setWbData] = useState<any>(null);
+  const [loadingWb, setLoadingWb] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -31,6 +33,32 @@ function VisualizationContent() {
     };
     loadData();
   }, [simId]);
+
+  useEffect(() => {
+    if (activeView === 'worldbank' && !wbData && !loadingWb) {
+      setLoadingWb(true);
+      // Infer country code
+      let code = 'EST';
+      const name = (fileName || '').toLowerCase();
+      if (name.includes('germany')) code = 'DEU';
+      else if (name.includes('usa') || name.includes('united states')) code = 'USA';
+      else if (name.includes('uk') || name.includes('united kingdom')) code = 'GBR';
+      else if (name.includes('france')) code = 'FRA';
+      else if (name.includes('china')) code = 'CHN';
+      else if (name.includes('india')) code = 'IND';
+
+      fetch(`/api/worldbank?country=${code}`)
+        .then(res => res.json())
+        .then(data => {
+          setWbData(data);
+          setLoadingWb(false);
+        })
+        .catch(err => {
+          console.error("Failed to load WB data", err);
+          setLoadingWb(false);
+        });
+    }
+  }, [activeView, fileName, wbData, loadingWb]);
 
   // Helper to safely get indicator values
   const getIndicator = (group: 'economic' | 'social' | 'environmental', namePart: string) => {
@@ -963,26 +991,32 @@ function VisualizationContent() {
                   </div>
                 </div>
 
-                <div className="space-y-12">
-                  <ComparisonRow 
-                    label="Energy Security Index" 
-                    local={selectedScenario === 'baseline' ? 62 : 88} 
-                    global={72} 
-                    desc={selectedScenario === 'baseline' ? "Current energy security relies heavily on historical grid stability with declining resilience." : "Estonia's projected energy security exceeds the regional average by 16% under this scenario."}
-                  />
-                  <ComparisonRow 
-                    label="Ease of Doing Business (Green Tech)" 
-                    local={selectedScenario === 'baseline' ? 48 : 92} 
-                    global={65} 
-                    desc={selectedScenario === 'baseline' ? "Existing regulatory environment for clean-tech remains at baseline regional standards." : "Proposed regulatory streamlining positions the jurisdiction as a Tier-1 destination for ESG capital."}
-                  />
-                  <ComparisonRow 
-                    label="Public Debt to GDP Impact" 
-                    local={selectedScenario === 'baseline' ? 28 : 45} 
-                    global={55} 
-                    desc={selectedScenario === 'baseline' ? "Historical debt-to-GDP ratio is low but provides minimal stimulus for structural shifts." : "While initial spending is high, the debt-service ratio remains 10% below World Bank 'Risk' thresholds."}
-                  />
-                </div>
+                {loadingWb ? (
+                   <div className="flex items-center justify-center py-20">
+                     <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                   </div>
+                ) : (
+                  <div className="space-y-12">
+                    <ComparisonRow 
+                      label="Energy Imports (% of use)" 
+                      local={wbData?.energy_imports?.local ? Math.round(wbData.energy_imports.local) : (selectedScenario === 'baseline' ? 62 : 48)} 
+                      global={wbData?.energy_imports?.global ? Math.round(wbData.energy_imports.global) : 72} 
+                      desc="Net energy imports as a percentage of total energy use. Lower is better for security."
+                    />
+                    <ComparisonRow 
+                      label="Renewable Consumption (%)" 
+                      local={wbData?.renewable_consumption?.local ? Math.round(wbData.renewable_consumption.local) : (selectedScenario === 'baseline' ? 32 : 55)} 
+                      global={wbData?.renewable_consumption?.global ? Math.round(wbData.renewable_consumption.global) : 18} 
+                      desc="Share of renewable energy in total final energy consumption."
+                    />
+                    <ComparisonRow 
+                      label="Central Gov. Debt (% of GDP)" 
+                      local={wbData?.debt_gdp?.local ? Math.round(wbData.debt_gdp.local) : (selectedScenario === 'baseline' ? 28 : 45)} 
+                      global={wbData?.debt_gdp?.global ? Math.round(wbData.debt_gdp.global) : 55} 
+                      desc="Total central government debt as a percentage of GDP."
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
