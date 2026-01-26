@@ -5,7 +5,7 @@ import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { SimulationResult } from '@/lib/types';
 import Link from 'next/link';
-import { getStoredSimulations, fetchSimulations } from '@/lib/storage';
+import { fetchSimulations } from '@/lib/storage';
 
 // Mock baseline generator
 const generateBaseline = (current: SimulationResult): SimulationResult => {
@@ -55,11 +55,10 @@ function ComparisonPageContent() {
       // 1. Load saved simulations
       const savedSims = await fetchSimulations();
       savedSims.forEach(sim => {
-        // Adapt stored format to SimulationResult if needed, or assume data structure matches
         if (sim.data) {
           allScenarios.push({
             ...sim.data,
-            scenario_id: sim.id, // Use outer ID
+            scenario_id: sim.id,
             name: sim.scenarioName || sim.data.name || 'Untitled Scenario'
           });
         }
@@ -70,36 +69,46 @@ function ComparisonPageContent() {
       if (currentDraftJson) {
         try {
           const currentDraft: SimulationResult = JSON.parse(currentDraftJson);
-          // Add as "Current Draft"
           allScenarios.push({
             ...currentDraft,
             scenario_id: 'current_draft',
             name: `Draft: ${currentDraft.name || 'Analysis in Progress'}`
           });
-
-          // 3. Generate Baseline from draft (or first saved sim if no draft)
-          const base = generateBaseline(currentDraft);
-          allScenarios.unshift(base); // Add baseline to top
         } catch (e) {
           console.error("Failed to parse current draft", e);
         }
-      } else if (allScenarios.length > 0) {
-        // If no draft but saved sims, generate baseline from first saved
+      }
+
+      // 3. Generate Baseline only if needed
+      if (allScenarios.length > 0) {
+        // Use the first scenario as a reference to create a mock baseline
         const base = generateBaseline(allScenarios[0]);
         allScenarios.unshift(base);
       }
 
       setScenarios(allScenarios);
 
-      // Default selection: Baseline + (Draft OR First Saved)
-      const defaults = [];
-      const baseline = allScenarios.find(s => s.scenario_id === 'baseline');
-      if (baseline) defaults.push(baseline.scenario_id);
-      
-      const second = allScenarios.find(s => s.scenario_id === 'current_draft') || allScenarios.find(s => s.scenario_id !== 'baseline');
-      if (second) defaults.push(second.scenario_id);
+      // Default selection logic
+      const realScenarios = allScenarios.filter(s => s.scenario_id !== 'baseline');
+      const defaults: string[] = [];
 
-      setSelectedIds(defaults);
+      if (realScenarios.length >= 2) {
+        // Prefer comparing two real scenarios
+        defaults.push(realScenarios[0].scenario_id);
+        defaults.push(realScenarios[1].scenario_id);
+      } else if (realScenarios.length === 1) {
+        // Compare Baseline vs Real
+        const baseline = allScenarios.find(s => s.scenario_id === 'baseline');
+        if (baseline) defaults.push(baseline.scenario_id);
+        defaults.push(realScenarios[0].scenario_id);
+      } else if (allScenarios.length > 0) {
+        // Fallback
+        defaults.push(allScenarios[0].scenario_id);
+      }
+
+      if (defaults.length > 0) {
+        setSelectedIds(defaults);
+      }
     };
     loadScenarios();
   }, []);
