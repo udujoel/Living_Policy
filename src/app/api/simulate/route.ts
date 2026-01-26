@@ -6,21 +6,39 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { levers, analysisContext } = await req.json();
+    const { analysisContext, levers } = await req.json();
 
-    if (!levers || !analysisContext) {
-      return NextResponse.json({ error: 'Levers and analysis context are required' }, { status: 400 });
+    if (!analysisContext || !levers) {
+      return NextResponse.json({ error: 'Context and levers are required' }, { status: 400 });
     }
 
+    console.log('[Simulate API] Calling Gemini with context length:', analysisContext.length);
+    console.log('[Simulate API] Levers:', JSON.stringify(levers));
+    
+    // Format levers for the prompt
+    const leversText = levers.map((l: any) => 
+      `- ${l.name}: ${l.value}${l.unit || ''} (Type: ${l.type || 'numeric'})`
+    ).join('\n');
+
     const prompt = SIMULATION_PROMPT
-      .replace('{{levers}}', JSON.stringify(levers, null, 2))
-      .replace('{{analysisContext}}', JSON.stringify(analysisContext, null, 2));
+      .replace('{{levers}}', leversText)
+      .replace('{{analysisContext}}', JSON.stringify(analysisContext));
+      
+    const simulationResult = await callGeminiStructured(prompt, SYSTEM_PERSONA);
+    
+    console.log('[Simulate API] Gemini response:', JSON.stringify(simulationResult).substring(0, 200));
 
-    const simulation = await callGeminiStructured(prompt, SYSTEM_PERSONA);
+    // Validate minimal response structure
+    if (!simulationResult || !simulationResult.outcomes) {
+      console.error('[Simulate API] Invalid response format:', simulationResult);
+      throw new Error('Invalid AI response format');
+    }
 
-    return NextResponse.json(simulation);
+    return NextResponse.json(simulationResult);
   } catch (error: any) {
-    console.error('Simulation error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to simulate scenario' }, { status: 500 });
+    console.error('[Simulate API] Error:', error.message, error.stack);
+    return NextResponse.json({ 
+      error: error.message || 'Failed to simulate scenario',
+    }, { status: 500 });
   }
 }
