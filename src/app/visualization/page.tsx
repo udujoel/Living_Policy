@@ -70,6 +70,26 @@ function VisualizationContent() {
   const carbonIndicator = getIndicator('environmental', 'carbon');
   const jobsIndicator = getIndicator('economic', 'job') || getIndicator('social', 'employment');
 
+  // Derived Metrics
+  const riskLevel = simData?.kpis ? (
+    (simData.kpis.economic_growth?.risks?.length || 0) + (simData.kpis.carbon_emissions?.risks?.length || 0) > 3 ? "HIGH" : "MODERATE"
+  ) : "MODERATE";
+  
+  const confidenceScore = simData?.assumptions?.reduce((acc: number, curr: any) => acc + (curr.confidence || 0), 0) / (simData?.assumptions?.length || 1) || 92;
+  const confidenceLabel = confidenceScore > 90 ? "HIGH" : confidenceScore > 75 ? "MEDIUM" : "LOW";
+
+  const getIconForStakeholder = (group: string) => {
+    const lower = group.toLowerCase();
+    if (lower.includes('farm') || lower.includes('agri')) return 'agriculture';
+    if (lower.includes('work') || lower.includes('labor') || lower.includes('employ')) return 'engineering';
+    if (lower.includes('tech') || lower.includes('innov')) return 'memory';
+    if (lower.includes('youth') || lower.includes('student')) return 'school';
+    if (lower.includes('consumer') || lower.includes('house')) return 'shopping_cart';
+    if (lower.includes('business') || lower.includes('corp')) return 'business';
+    if (lower.includes('environment') || lower.includes('nature')) return 'forest';
+    return 'groups';
+  };
+
   const handleDeploy = async () => {
     setIsDeploying(true);
     
@@ -331,9 +351,9 @@ function VisualizationContent() {
                         simData?.stakeholder_impacts?.slice(0, 4).map((s: any, i: number) => (
                           <StakeholderRow 
                             key={i}
-                            icon="groups" 
+                            icon={getIconForStakeholder(s.group)} 
                             label={s.group} 
-                            desc={s.impact.substring(0, 30) + '...'} 
+                            desc={s.impact.length > 40 ? s.impact.substring(0, 40) + '...' : s.impact} 
                             impact={s.sentiment === 'positive' ? 'High' : s.sentiment === 'negative' ? 'Risk' : 'Med'} 
                             status={s.sentiment} 
                           />
@@ -1169,11 +1189,11 @@ function VisualizationContent() {
             <div className="grid grid-cols-2 gap-4">
                <div className="bg-white/5 border border-white/5 p-4 rounded-xl flex flex-col gap-1">
                  <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Risk Level</span>
-                 <span className="text-lg font-bold text-amber-400">MODERATE</span>
+                 <span className={cn("text-lg font-bold", riskLevel === 'HIGH' ? "text-red-400" : riskLevel === 'MODERATE' ? "text-amber-400" : "text-green-400")}>{riskLevel}</span>
                </div>
                <div className="bg-white/5 border border-white/5 p-4 rounded-xl flex flex-col gap-1">
                  <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Confidence</span>
-                 <span className="text-lg font-bold text-blue-400">HIGH (92%)</span>
+                 <span className={cn("text-lg font-bold", confidenceLabel === 'HIGH' ? "text-blue-400" : "text-amber-400")}>{confidenceLabel} ({Math.round(confidenceScore)}%)</span>
                </div>
             </div>
           </div>
