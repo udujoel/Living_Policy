@@ -70,6 +70,78 @@ function VisualizationContent() {
     alert('Public report link copied to clipboard!');
   };
 
+  const renderCausalGraph = () => {
+    const nodes = simData?.causal_graph?.nodes || [
+        { id: "n1", label: "Carbon Tax", type: "policy" },
+        { id: "n2", label: "Industrial Cost", type: "factor" },
+        { id: "n3", label: "Emissions", type: "outcome" },
+        { id: "n4", label: "Innovation", type: "factor" },
+        { id: "n5", label: "Exports", type: "outcome" }
+    ];
+
+    const edges = simData?.causal_graph?.edges || [
+        { source: "n1", target: "n2", strength: 0.8, description: "Direct financial burden" },
+        { source: "n2", target: "n3", strength: -0.6, description: "Efficiency incentive" },
+        { source: "n1", target: "n4", strength: 0.5, description: "R&D Subsidy" },
+        { source: "n4", target: "n5", strength: 0.7, description: "Tech Leadership" }
+    ];
+
+    // Simple manual layout for now (can use dagre or force-graph in future)
+    // Root at left, factors middle, outcomes right
+    const getNodePos = (node: any, i: number, total: number) => {
+        const layer = node.type === 'policy' ? 100 : node.type === 'factor' ? 400 : 700;
+        // Distribute vertically
+        const y = 100 + (i * 120) % 400; 
+        return { x: layer, y };
+    };
+
+    const nodePositions = nodes.map((n: any, i: number) => ({...n, ...getNodePos(n, i, nodes.length)}));
+
+    return (
+        <div className="relative w-full h-[500px] border border-white/5 rounded-2xl bg-[#0d141b] overflow-hidden">
+            <svg className="w-full h-full">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+                    </marker>
+                </defs>
+                {/* Edges */}
+                {edges.map((e: any, i: number) => {
+                    const src = nodePositions.find((n: any) => n.id === e.source);
+                    const tgt = nodePositions.find((n: any) => n.id === e.target);
+                    if (!src || !tgt) return null;
+                    return (
+                        <g key={i} className="group">
+                            <path 
+                                d={`M${src.x},${src.y} C${src.x+100},${src.y} ${tgt.x-100},${tgt.y} ${tgt.x},${tgt.y}`}
+                                stroke={e.strength > 0 ? "#22c55e" : "#ef4444"} 
+                                strokeWidth={Math.abs(e.strength) * 4}
+                                fill="none"
+                                markerEnd="url(#arrowhead)"
+                                className="opacity-60 group-hover:opacity-100 transition-opacity"
+                            />
+                             <text x={(src.x + tgt.x)/2} y={(src.y + tgt.y)/2 - 10} className="fill-muted-foreground text-[10px] opacity-0 group-hover:opacity-100 transition-opacity text-center" textAnchor="middle">{e.description}</text>
+                        </g>
+                    );
+                })}
+                {/* Nodes */}
+                {nodePositions.map((n: any) => (
+                    <g key={n.id} className="cursor-pointer hover:opacity-80 transition-opacity" transform={`translate(${n.x},${n.y})`}>
+                        <circle r="25" fill={n.type === 'policy' ? '#137fec' : n.type === 'factor' ? '#f59e0b' : '#22c55e'} className="shadow-lg" />
+                        <text y="5" textAnchor="middle" fill="white" className="text-[10px] font-bold uppercase pointer-events-none">{n.label.substring(0, 3)}</text>
+                        <text y="40" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold uppercase tracking-widest">{n.label}</text>
+                    </g>
+                ))}
+            </svg>
+            <div className="absolute top-4 left-4 flex gap-4">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-[10px] text-muted-foreground uppercase">Policy Lever</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500"></div><span className="text-[10px] text-muted-foreground uppercase">Intermediary</span></div>
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div><span className="text-[10px] text-muted-foreground uppercase">Outcome</span></div>
+            </div>
+        </div>
+    );
+  };
+
   return (
     <main className="max-container flex flex-col min-h-screen bg-[#0a1118] text-foreground font-sans antialiased">
       <TopNav title="Global Impact Analysis" />
@@ -697,6 +769,9 @@ function VisualizationContent() {
                   </p>
                 </div>
 
+                {/* Graph Visualization */}
+                {renderCausalGraph()}
+                
                 <div className="flex flex-col relative pl-4 lg:pl-0">
                   <div className="absolute left-[31px] lg:left-[39px] top-10 bottom-10 w-0.5 bg-gradient-to-b from-primary/40 via-primary/20 to-primary/5" />
                                     

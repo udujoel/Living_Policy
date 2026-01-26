@@ -93,6 +93,8 @@ function MapPageContent() {
     return 'amber';
   };
 
+  const [activeFilter, setActiveFilter] = useState('Economic');
+
   return (
     <main className="max-container flex flex-col h-screen overflow-hidden pb-20 lg:pb-0 bg-[#0a1118]">
       <TopNav title="Geospatial Impact Map" />
@@ -107,10 +109,10 @@ function MapPageContent() {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              <FilterChip label="Economic" active />
-              <FilterChip label="Demographic" />
-              <FilterChip label="Infrastructure" />
-              <FilterChip label="Eco-Health" />
+              <FilterChip label="Economic" active={activeFilter === 'Economic'} onClick={() => setActiveFilter('Economic')} />
+              <FilterChip label="Demographic" active={activeFilter === 'Demographic'} onClick={() => setActiveFilter('Demographic')} />
+              <FilterChip label="Infrastructure" active={activeFilter === 'Infrastructure'} onClick={() => setActiveFilter('Infrastructure')} />
+              <FilterChip label="Eco-Health" active={activeFilter === 'Eco-Health'} onClick={() => setActiveFilter('Eco-Health')} />
             </div>
           </div>
 
@@ -362,8 +364,10 @@ const MapActionBtn = ({ icon, label, active = false }: any) => (
   </div>
 );
 
-const FilterChip = ({ label, active = false }: { label: string, active?: boolean }) => (
-  <button className={cn(
+const FilterChip = ({ label, active = false, onClick }: { label: string, active?: boolean, onClick?: () => void }) => (
+  <button 
+    onClick={onClick}
+    className={cn(
     "px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all shadow-lg backdrop-blur-md",
     active ? "bg-primary border-primary text-white" : "bg-card-alt/80 border-white/10 text-muted-foreground hover:text-foreground"
   )}>

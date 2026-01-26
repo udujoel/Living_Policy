@@ -3,7 +3,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 const S3_ENDPOINT = process.env.CLOUDFLARE_S3_API;
 const ACCESS_KEY = process.env.CLOUDFLARE_ACCESS_KEY_ID;
 const SECRET_KEY = process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
-const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME || 'living-policy-docs';
+const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME || 'living-policy';
 
 // Initialize S3 Client for Cloudflare R2
 const s3Client = new S3Client({

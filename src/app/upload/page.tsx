@@ -67,27 +67,47 @@ export default function UploadPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setIsUploading(true);
       setProgress(0);
-      setTimeout(() => {
-        const newFile: UploadedFile = {
-          id: Date.now(),
-          name: file.name,
-          source: 'Upload',
-          size: file.size > 1024 * 1024 
-            ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
-            : (file.size / 1024).toFixed(0) + ' KB',
-          status: 'Parsed' as const
-        };
-        saveUpload(newFile);
-        setUploads(prev => [newFile, ...prev]);
-        setAnalyzingFile(newFile);
+
+      // Upload to R2 via API
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+           const newFile: UploadedFile = {
+            id: Date.now(),
+            name: data.name,
+            source: data.url, // Store the R2 URL
+            size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+            status: 'Parsed' as const
+          };
+          
+          saveUpload(newFile);
+          setUploads(prev => [newFile, ...prev]);
+          setAnalyzingFile(newFile);
+          setSelectedId(newFile.id);
+        } else {
+          console.error('Upload failed', data.error);
+          alert('Upload failed: ' + data.error);
+        }
+      } catch (err) {
+        console.error('Upload error', err);
+        alert('Upload error occurred');
+      } finally {
         setIsUploading(false);
-        setSelectedId(newFile.id);
-      }, 1500);
+      }
     }
   };
 
@@ -207,7 +227,17 @@ export default function UploadPage() {
         {/* Right Side: Bottom Buttons (Mobile Sticky / Desktop Fixed) */}
         <div className="p-6 lg:p-12 lg:w-[400px] flex flex-col gap-4 lg:bg-card-alt/10 lg:border-l border-white/5 lg:justify-end">
           <div className="flex flex-col gap-4 w-full">
-            <button className="stitch-button-secondary w-full py-4 text-base font-bold uppercase tracking-widest">Cancel</button>
+            <button 
+              onClick={() => {
+                setAnalyzingFile(null);
+                setUploads([]);
+                setProgress(0);
+                router.push('/dashboard');
+              }}
+              className="stitch-button-secondary w-full py-4 text-base font-bold uppercase tracking-widest"
+            >
+              Cancel
+            </button>
             <button 
               onClick={() => router.push(`/analysis?file=${encodeURIComponent(analyzingFile?.name || '')}`)}
               disabled={!analyzingFile || progress < 100}
