@@ -85,8 +85,7 @@ export default function WelcomePage() {
           </div>
 
           <button 
-            onClick={handleSignIn}
-            disabled={isLoggingIn}
+            onClick={() => router.push('/login')}
             className={cn(
               "stitch-button-primary h-14 flex items-center justify-center text-lg font-bold shadow-xl shadow-primary/20 active:scale-[0.97]",
               isLoggingIn && "opacity-80 cursor-wait"
