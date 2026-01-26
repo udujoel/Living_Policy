@@ -4,18 +4,49 @@ import React, { useState } from 'react';
 import { Icon } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function WelcomePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError('Please enter email and password');
+      return;
+    }
+
     setIsLoggingIn(true);
-    // Simulate a brief network delay
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Login failed', err);
+      setError(err.message || 'Authentication failed');
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleGuestPreview = () => {
+    // Guest mode bypasses Supabase Auth and uses LocalStorage (handled by storage.ts)
+    setIsLoggingIn(true);
     setTimeout(() => {
       router.push('/dashboard');
-    }, 1200);
+    }, 800);
   };
 
   return (
@@ -54,12 +85,22 @@ export default function WelcomePage() {
           </div>
 
           <div className="flex flex-col gap-5">
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-bold flex items-center gap-2">
+                <Icon name="error" />
+                {error}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email address</label>
               <input 
                 type="email" 
                 placeholder="name@organization.gov" 
                 className="stitch-input h-14"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
               />
             </div>
 
@@ -70,6 +111,9 @@ export default function WelcomePage() {
                   type={showPassword ? "text" : "password"} 
                   placeholder="Enter your password" 
                   className="stitch-input h-14 w-full pr-12"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
                 />
                 <button 
                   onClick={() => setShowPassword(!showPassword)}
@@ -85,7 +129,8 @@ export default function WelcomePage() {
           </div>
 
           <button 
-            onClick={() => router.push('/login')}
+            onClick={handleSignIn}
+            disabled={isLoggingIn}
             className={cn(
               "stitch-button-primary h-14 flex items-center justify-center text-lg font-bold shadow-xl shadow-primary/20 active:scale-[0.97]",
               isLoggingIn && "opacity-80 cursor-wait"
@@ -100,10 +145,7 @@ export default function WelcomePage() {
           </button>
 
           <button 
-            onClick={() => {
-              setIsLoggingIn(true);
-              setTimeout(() => router.push('/dashboard'), 800);
-            }}
+            onClick={handleGuestPreview}
             disabled={isLoggingIn}
             className="w-full py-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-center gap-2 group"
           >
