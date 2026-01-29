@@ -70,11 +70,15 @@ export interface CausalGraph {
 
 export interface RegionalImpact {
   region_name: string;
-  coordinates: { x: string; y: string };
+  coordinates: { x: string; y: string; lat?: number; lng?: number }; // Support both display and geo coordinates
   impact_score: number; // -10 to 10 scale
   status: 'High Benefit' | 'Moderate Benefit' | 'Neutral' | 'Moderate Risk' | 'High Risk';
-  key_metrics: { label: string; value: string; trend: 'up' | 'down' | 'stable' }[];
+  key_metrics: { label: string; value: string; trend: 'up' | 'down' | 'stable'; category?: string }[];
   summary: string;
+  detailed_analysis?: string; // Extended analysis for modal
+  population_affected?: number; // Number of people
+  economic_impact?: string; // Dollar amount or percentage
+  timeframe?: string; // When impacts manifest
 }
 
 export interface TimelineEvent {
