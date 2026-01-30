@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadToR2 } from '@/lib/r2';
+import { uploadToR2, downloadFromR2 } from '@/lib/r2';
 
 // Use legacy build of pdfjs-dist for Node.js compatibility
 const pdfjs = require('pdfjs-dist/legacy/build/pdf.js');
@@ -8,28 +8,52 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
+    const contentType = req.headers.get('content-type') || '';
+    
+    let buffer: Buffer;
+    let fileName: string;
+    let fileType: string;
+    let fileSize: number;
+    let publicUrl: string | null = null;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-    }
-
-    // Convert file to buffer for both R2 and parsing
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Upload to R2
-    const path = `uploads/${Date.now()}-${file.name}`;
-    const url = await uploadToR2(file, path);
-
-    if (!url) {
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    if (contentType.includes('application/json')) {
+        // Mode 1: Process already uploaded file (Large files)
+        const body = await req.json();
+        const { fileKey, fileName: name, fileType: type } = body;
+        
+        if (!fileKey) return NextResponse.json({ error: 'Missing fileKey' }, { status: 400 });
+        
+        const downloaded = await downloadFromR2(fileKey);
+        if (!downloaded) return NextResponse.json({ error: 'File not found in storage' }, { status: 404 });
+        
+        buffer = downloaded;
+        fileName = name || 'unknown.pdf';
+        fileType = type || (fileName.endsWith('.pdf') ? 'application/pdf' : 'text/plain');
+        fileSize = buffer.length;
+        publicUrl = body.url || null; 
+        
+    } else {
+        // Mode 2: Direct Upload (Small files)
+        const formData = await req.formData();
+        const file = formData.get('file') as File;
+        if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        
+        const arrayBuffer = await file.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        fileName = file.name;
+        fileType = file.type;
+        fileSize = file.size;
+        
+        const path = `uploads/${Date.now()}-${fileName}`;
+        publicUrl = await uploadToR2(file, path);
+        if (!publicUrl) return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
 
     // Extract Text if PDF
     let extractedText = '';
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    const isPdf = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+    
+    if (isPdf) {
         try {
             const uint8Array = new Uint8Array(buffer);
             const loadingTask = pdfjs.getDocument({ data: uint8Array });
@@ -46,15 +70,15 @@ export async function POST(req: NextRequest) {
             console.error("PDF Parse Error", e);
             extractedText = "Error extracting text from PDF.";
         }
-    } else if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.md')) {
+    } else if (fileType === 'text/plain' || fileName.toLowerCase().endsWith('.txt') || fileName.toLowerCase().endsWith('.md')) {
         extractedText = buffer.toString('utf-8');
     }
 
     return NextResponse.json({ 
       success: true, 
-      url, 
-      name: file.name,
-      size: file.size,
+      url: publicUrl, 
+      name: fileName,
+      size: fileSize,
       text: extractedText.substring(0, 100000) // Return up to 100k chars
     });
   } catch (error: any) {

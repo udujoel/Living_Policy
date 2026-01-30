@@ -73,17 +73,79 @@ export default function UploadPage() {
       setIsUploading(true);
       setProgress(0);
 
-      // Upload to R2 via API
       try {
-        const formData = new FormData();
-        formData.append('file', file);
+        let data = null;
 
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        // Use Presigned URL for files > 4MB to avoid Vercel 4.5MB body limit
+        if (file.size > 4 * 1024 * 1024) {
+            console.log("Large file detected (>4MB), using Presigned URL flow");
+            
+            // 1. Get Presigned URL
+            const presignRes = await fetch('/api/upload/presign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: file.name, contentType: file.type })
+            });
+            
+            if (!presignRes.ok) throw new Error('Failed to initiate secure upload');
+            const { url, key } = await presignRes.json();
+            
+            // 2. Upload to R2 directly (Client -> Storage)
+            const uploadRes = await fetch(url, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': file.type }
+            });
+            
+            if (!uploadRes.ok) throw new Error('Storage upload failed');
+            
+            // 3. Trigger Server Analysis (Server downloads from Storage)
+            const processRes = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    fileKey: key, 
+                    fileName: file.name, 
+                    fileType: file.type,
+                    // Construct a virtual URL for the frontend reference
+                    url: url.split('?')[0] 
+                })
+            });
+            
+            if (!processRes.ok) {
+                const errText = await processRes.text();
+                try {
+                    const errJson = JSON.parse(errText);
+                    throw new Error(errJson.error || 'Analysis processing failed');
+                } catch {
+                    throw new Error(`Processing failed: ${processRes.status} ${processRes.statusText}`);
+                }
+            }
+            
+            data = await processRes.json();
 
-        const data = await response.json();
+        } else {
+            // Small File Flow (Direct API)
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+                if (response.status === 413) throw new Error('File too large (Limit is 4.5MB for direct upload).');
+                const errText = await response.text();
+                try {
+                   const errJson = JSON.parse(errText);
+                   throw new Error(errJson.error || 'Upload failed');
+                } catch {
+                   throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                }
+            }
+            data = await response.json();
+        }
 
         if (data.success) {
            const newFile: UploadedFile = {
@@ -108,9 +170,9 @@ export default function UploadPage() {
           console.error('Upload failed', data.error);
           alert('Upload failed: ' + data.error);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Upload error', err);
-        alert('Upload error occurred');
+        alert(`Upload Error: ${err.message}`);
       } finally {
         setIsUploading(false);
       }
