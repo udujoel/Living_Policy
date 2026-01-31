@@ -303,6 +303,29 @@ function UploadContent() {
                 </div>
                 <button className="mt-2 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest px-6 py-2 rounded-lg border border-white/5">Select New File</button>
               </div>
+
+              {/* File List */}
+              {uploads.length > 0 && (
+                <div className="flex flex-col gap-4 mt-8 pt-8 border-t border-white/5">
+                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Project Files ({uploads.length})</h3>
+                   <div className="flex flex-col gap-2">
+                     {uploads.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-4 rounded-xl bg-card-alt/20 border border-white/5">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                                <Icon name="description" className="text-muted-foreground text-sm" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-foreground">{file.name}</span>
+                                <span className="text-[10px] text-muted-foreground uppercase">{file.status}</span>
+                              </div>
+                           </div>
+                           <span className="text-[10px] font-mono text-muted-foreground/60">{file.size}</span>
+                        </div>
+                     ))}
+                   </div>
+                </div>
+              )}
             </>
           )}
         </div>

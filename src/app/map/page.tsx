@@ -141,6 +141,14 @@ function MapPageContent() {
 
   const [activeFilter, setActiveFilter] = useState('Economic');
 
+  const filteredData = regionalData.filter(r => {
+      if (activeFilter === 'Economic') return true; 
+      if (activeFilter === 'Eco-Health') return r.key_metrics.some(m => m.label.includes('Carbon') || m.label.includes('Energy'));
+      if (activeFilter === 'Infrastructure') return r.key_metrics.some(m => m.label.includes('Commute') || m.label.includes('Transport'));
+      if (activeFilter === 'Demographic') return r.key_metrics.some(m => m.label.includes('Jobs') || m.label.includes('Housing'));
+      return true;
+  });
+
   return (
     <main className="max-container flex flex-col h-screen overflow-hidden pb-20 lg:pb-0 bg-[#0a1118]">
       <TopNav title="Geospatial Impact Map" />
@@ -165,11 +173,24 @@ function MapPageContent() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Regional Analysis</h2>
-              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">{regionalData.length} Regions</span>
+              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">{filteredData.length} Regions</span>
+            </div>
+
+            {/* Aggregate Summary */}
+            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl animate-in fade-in slide-in-from-top-2 duration-500">
+                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
+                    {activeFilter} Impact Overview
+                 </h3>
+                 <p className="text-xs text-muted-foreground leading-relaxed">
+                    {activeFilter === 'Economic' ? "Overall positive growth (avg +12%) concentrated in urban hubs, with rural lag requiring targeted subsidies." :
+                     activeFilter === 'Eco-Health' ? "Significant reduction in carbon emissions (-15%) across industrial zones, improving local air quality index by 22 points." :
+                     activeFilter === 'Infrastructure' ? "Transit bottlenecks identified in suburban rings require $4B investment to match population inflow." :
+                     "Demographic shifts indicate younger workforce migration to tech-centric districts, aging population in outskirts."}
+                 </p>
             </div>
 
             <div className="flex flex-col gap-4">
-              {regionalData.map((region, idx) => (
+              {filteredData.map((region, idx) => (
                 <RegionalAnalysisCard 
                   key={idx}
                   name={region.region_name}
@@ -177,7 +198,8 @@ function MapPageContent() {
                   metrics={region.key_metrics}
                   color={getColor(region.status)}
                   isSelected={selectedRegion === region.region_name}
-                  onClick={() => setSelectedRegion(region.region_name)}
+                  expanded={selectedRegion === region.region_name}
+                  onClick={() => setSelectedRegion(selectedRegion === region.region_name ? null : region.region_name)}
                 />
               ))}
             </div>
@@ -212,7 +234,7 @@ function MapPageContent() {
               alt="City Map"
             />
           </div>
-
+          
           <div className="absolute inset-0 pointer-events-none">
              <svg className="w-full h-full opacity-30" viewBox="0 0 1000 1000">
                <path d="M100,200 Q300,100 500,250 T900,200 V800 Q700,900 500,750 T100,800 Z" fill="none" stroke="white" strokeWidth="0.5" />
@@ -241,7 +263,7 @@ function MapPageContent() {
           )}
 
           {/* Dynamic Map Markers from Regional Data */}
-          {regionalData.map((region, idx) => (
+          {filteredData.map((region, idx) => (
             <MapMarker 
               key={idx}
               x={region.coordinates.x}
@@ -334,13 +356,13 @@ const LayerBtn = ({ active, onClick, label }: any) => (
   </button>
 );
 
-const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, isSelected, onClick }: any) => (
+const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, isSelected, onClick, expanded = false }: any) => (
   <div 
     onClick={onClick}
     className={cn(
-    "stitch-card group hover:border-white/10 transition-all cursor-pointer",
+    "stitch-card group hover:border-white/10 transition-all cursor-pointer overflow-hidden",
     compact ? "p-4 bg-background-dark/90 backdrop-blur-md" : "p-6 bg-card-alt/20",
-    isSelected && "border-primary/50 bg-primary/5"
+    isSelected && "border-primary/50 bg-primary/5 shadow-[0_0_30px_rgba(19,127,236,0.1)]"
   )}>
     <div className="flex justify-between items-start mb-4">
       <div className="flex flex-col">
@@ -368,6 +390,21 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, i
           <span className="text-xs font-bold font-mono text-foreground/90">{m.value}</span>
         </div>
       ))}
+    </div>
+
+    {/* Expanded Analysis */}
+    <div className={cn("grid transition-all duration-500 ease-in-out", expanded ? "grid-rows-[1fr] opacity-100 mt-6 pt-6 border-t border-white/5" : "grid-rows-[0fr] opacity-0")}>
+       <div className="overflow-hidden flex flex-col gap-4">
+         <h5 className="text-[10px] font-bold uppercase tracking-widest text-primary">Deep Dive Analysis</h5>
+         <p className="text-xs text-muted-foreground leading-relaxed">
+           Specific impact assessment for {name} indicates a correlation between the proposed policy and local {metrics?.[0]?.label.toLowerCase() || 'economic'} factors. 
+           Projected outcome suggests {status.toLowerCase()} over the next 5 years.
+         </p>
+         <div className="flex gap-2">
+            <span className="px-2 py-1 bg-white/5 rounded text-[8px] font-bold uppercase text-muted-foreground">Demographics</span>
+            <span className="px-2 py-1 bg-white/5 rounded text-[8px] font-bold uppercase text-muted-foreground">Infra</span>
+         </div>
+       </div>
     </div>
   </div>
 );

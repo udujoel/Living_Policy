@@ -848,15 +848,46 @@ function VisualizationContent() {
 
               <div className="stitch-card p-8 bg-card-alt/20 border-white/5 flex flex-col gap-8">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">Convergence Trend</h3>
-                  <Icon name="info" className="text-muted-foreground/40" />
+                  <h3 className="text-xl font-bold">Convergence Trend ({activeComparisonTab})</h3>
+                  <div className="flex gap-4">
+                      <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Proposed</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Baseline</span>
+                      </div>
+                  </div>
                 </div>
                 
                 <div className="h-64 w-full flex items-end gap-6 pt-10">
-                  <TrendBar heights={[30, 80]} label="Year 0" />
-                  <TrendBar heights={[50, 40]} label="Year 5" />
-                  <TrendBar heights={[90, 60]} label="Year 10" />
+                  <TrendBar 
+                    heights={activeComparisonTab === 'Economy' ? [30, 40] : activeComparisonTab === 'Environment' ? [80, 75] : [40, 42]} 
+                    label="Year 0" 
+                  />
+                  <TrendBar 
+                    heights={activeComparisonTab === 'Economy' ? [45, 42] : activeComparisonTab === 'Environment' ? [65, 72] : [55, 45]} 
+                    label="Year 3" 
+                  />
+                  <TrendBar 
+                    heights={activeComparisonTab === 'Economy' ? [60, 45] : activeComparisonTab === 'Environment' ? [50, 70] : [70, 48]} 
+                    label="Year 5" 
+                  />
+                  <TrendBar 
+                    heights={activeComparisonTab === 'Economy' ? [85, 48] : activeComparisonTab === 'Environment' ? [35, 68] : [82, 50]} 
+                    label="Year 8" 
+                  />
+                  <TrendBar 
+                    heights={activeComparisonTab === 'Economy' ? [95, 50] : activeComparisonTab === 'Environment' ? [20, 65] : [90, 52]} 
+                    label="Year 10" 
+                  />
                 </div>
+                <p className="text-xs text-muted-foreground text-center">
+                    {activeComparisonTab === 'Economy' ? "Projected economic divergence shows significant ROI by Year 5." : 
+                     activeComparisonTab === 'Environment' ? "Rapid decarbonization in proposed scenario vs stagnation in baseline." : 
+                     "Social equity metrics improve steadily under proposed framework."}
+                </p>
               </div>
             </div>
           )}
