@@ -1,20 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSignOut = () => {
+  // Load User Data
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    getUser();
+  }, []);
+
+  const handleSignOut = async () => {
     setIsLoggingOut(true);
+    await supabase.auth.signOut();
     setTimeout(() => {
       router.push('/');
     }, 1000);
   };
+
+  const displayName = user?.user_metadata?.full_name || 'Guest User';
+  const displayOrg = user?.user_metadata?.organization || 'Independent Analyst';
+  const displayEmail = user?.email || 'guest@simulator.local';
 
   return (
     <main className="max-container flex flex-col h-screen overflow-hidden pb-20 lg:pb-0">
@@ -50,61 +68,67 @@ export default function SettingsPage() {
 
         {/* Main Content */}
         <section className="flex-1 overflow-y-auto p-6 lg:p-12">
-          <div className="max-w-4xl mx-auto flex flex-col gap-12 pb-32 lg:pb-0">
-            {/* Profile Info */}
-            <div className="flex items-center gap-6 p-2">
-              <div className="relative">
-                <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden">
-                  <Icon name="person" className="text-4xl lg:text-5xl text-white" fill />
+          {loading ? (
+             <div className="flex items-center justify-center h-full text-muted-foreground text-xs uppercase tracking-widest">
+                 Loading Profile...
+             </div>
+          ) : (
+            <div className="max-w-4xl mx-auto flex flex-col gap-12 pb-32 lg:pb-0">
+                {/* Profile Info */}
+                <div className="flex items-center gap-6 p-2">
+                <div className="relative">
+                    <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden">
+                    <Icon name="person" className="text-4xl lg:text-5xl text-white" fill />
+                    </div>
+                    <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-card-alt border border-white/10 rounded-lg flex items-center justify-center shadow-xl hover:bg-card transition-colors">
+                    <Icon name="edit" className="text-sm" />
+                    </button>
                 </div>
-                <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-card-alt border border-white/10 rounded-lg flex items-center justify-center shadow-xl hover:bg-card transition-colors">
-                  <Icon name="edit" className="text-sm" />
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-xl lg:text-3xl font-bold">{displayName}</h2>
+                    <p className="text-xs lg:text-sm text-muted-foreground font-medium uppercase tracking-widest">{displayOrg}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{displayEmail} • Online</span>
+                    </div>
+                </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <SettingsSection title="Workspace & Roles">
+                    <SettingsItem icon="dashboard" title="Organization Profile" desc="Manage branding and core domains." />
+                    <SettingsItem icon="shield" title="User Permissions" desc="Roles, access tokens, and SSO." />
+                </SettingsSection>
+
+                <SettingsSection title="API & Data Integrations">
+                    <SettingsItem icon="distance" title="OpenRouter Connection" desc="Gemini 3 Pro / Flash keys." />
+                    <SettingsItem icon="query_stats" title="External GIS Feeds" desc="Mapbox and ESRI integration." />
+                </SettingsSection>
+                </div>
+
+                <SettingsSection title="Notifications">
+                <div className="stitch-card p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <ToggleItem label="Simulation Alerts" desc="Critical threshold warnings." active />
+                    <ToggleItem label="Collaboration Mentions" desc="Direct tags and project invites." active />
+                    <ToggleItem label="System Reports" desc="Weekly usage summaries." />
+                </div>
+                </SettingsSection>
+
+                <button 
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className={cn(
+                    "lg:hidden stitch-card p-4 border-red-500/20 bg-red-500/5 flex items-center justify-between text-red-400 transition-all",
+                    isLoggingOut && "opacity-50"
+                )}
+                >
+                <div className="flex items-center gap-3">
+                    <Icon name={isLoggingOut ? "sync" : "logout"} className={cn("text-xl", isLoggingOut && "animate-spin")} />
+                    <span className="text-sm font-bold">{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
+                </div>
                 </button>
-              </div>
-              <div className="flex flex-col gap-1">
-                <h2 className="text-xl lg:text-3xl font-bold">Alex Rivera</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium uppercase tracking-widest">Lead Policy Analyst</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Dept of Energy • Online</span>
-                </div>
-              </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <SettingsSection title="Workspace & Roles">
-                <SettingsItem icon="dashboard" title="Organization Profile" desc="Manage branding and core domains." />
-                <SettingsItem icon="shield" title="User Permissions" desc="Roles, access tokens, and SSO." />
-              </SettingsSection>
-
-              <SettingsSection title="API & Data Integrations">
-                <SettingsItem icon="distance" title="OpenRouter Connection" desc="Gemini 3 Pro / Flash keys." />
-                <SettingsItem icon="query_stats" title="External GIS Feeds" desc="Mapbox and ESRI integration." />
-              </SettingsSection>
-            </div>
-
-            <SettingsSection title="Notifications">
-              <div className="stitch-card p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-                <ToggleItem label="Simulation Alerts" desc="Critical threshold warnings." active />
-                <ToggleItem label="Collaboration Mentions" desc="Direct tags and project invites." active />
-                <ToggleItem label="System Reports" desc="Weekly usage summaries." />
-              </div>
-            </SettingsSection>
-
-            <button 
-              onClick={handleSignOut}
-              disabled={isLoggingOut}
-              className={cn(
-                "lg:hidden stitch-card p-4 border-red-500/20 bg-red-500/5 flex items-center justify-between text-red-400 transition-all",
-                isLoggingOut && "opacity-50"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon name={isLoggingOut ? "sync" : "logout"} className={cn("text-xl", isLoggingOut && "animate-spin")} />
-                <span className="text-sm font-bold">{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
-              </div>
-            </button>
-          </div>
+          )}
         </section>
       </div>
       <SidebarNav />
