@@ -1,19 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { Icon, TopNav, BottomAction, SearchBar, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { SimulationResult as SimData, RegionalImpact } from '@/lib/types';
 import { SimulationResult as StoredSim } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
+import { GeoRegionalImpact } from '@/components/MapVisualization';
 
-// Default fallback data for initial view or when no simulation exists
-const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
+// Dynamically import the MapVisualization component with SSR disabled
+const MapVisualization = dynamic(() => import('@/components/MapVisualization'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center bg-[#0d141b] text-muted-foreground text-xs uppercase tracking-widest">Loading Interactive Map...</div>
+});
+
+const DEFAULT_REGIONAL_DATA: GeoRegionalImpact[] = [
   { 
-    region_name: "Urban Core", 
-    coordinates: { x: "35%", y: "42%" }, 
+    region_name: "Urban Core (Tallinn)", 
+    coords: [59.4370, 24.7536],
+    polygon: [
+      [59.48, 24.65], [59.48, 24.85], [59.38, 24.85], [59.38, 24.65]
+    ],
     impact_score: 8, 
     status: "High Benefit", 
     key_metrics: [
@@ -23,8 +32,11 @@ const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
     summary: "Strong economic growth driven by green tech adoption, though housing pressure rises." 
   },
   { 
-    region_name: "Suburban Ring", 
-    coordinates: { x: "62%", y: "58%" }, 
+    region_name: "Suburban Ring (Harju)", 
+    coords: [59.3000, 24.9000], 
+    polygon: [
+      [59.38, 24.60], [59.45, 25.10], [59.20, 25.20], [59.15, 24.50]
+    ],
     impact_score: -2, 
     status: "Moderate Risk", 
     key_metrics: [
@@ -34,8 +46,11 @@ const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
     summary: "Housing costs increase due to displacement from urban core; transit upgrades lagging." 
   },
   { 
-    region_name: "Industrial District", 
-    coordinates: { x: "48%", "y": "25%" }, 
+    region_name: "Industrial District (Ida-Viru)", 
+    coords: [59.3797, 27.4191], 
+    polygon: [
+      [59.45, 27.00], [59.45, 28.20], [59.00, 28.20], [59.00, 27.00]
+    ],
     impact_score: 5, 
     status: "Moderate Benefit", 
     key_metrics: [
@@ -45,8 +60,11 @@ const DEFAULT_REGIONAL_DATA: RegionalImpact[] = [
     summary: "Transition to cleaner energy reduces costs, but requires workforce retraining." 
   },
   { 
-    region_name: "Rural Outskirts", 
-    coordinates: { x: "75%", "y": "30%" }, 
+    region_name: "Rural Outskirts (Tartu/South)", 
+    coords: [58.3780, 26.7290], 
+    polygon: [
+      [58.50, 26.40], [58.50, 27.00], [58.20, 27.00], [58.20, 26.40]
+    ],
     impact_score: 0, 
     status: "Neutral", 
     key_metrics: [
@@ -61,82 +79,53 @@ function MapPageContent() {
   const router = useRouter();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [activeLayer, setActiveLayer] = useState('heatmap');
-  const [regionalData, setRegionalData] = useState<RegionalImpact[]>(DEFAULT_REGIONAL_DATA);
+  const [regionalData, setRegionalData] = useState<GeoRegionalImpact[]>(DEFAULT_REGIONAL_DATA);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [fullSimulation, setFullSimulation] = useState<StoredSim | null>(null);
+  const [mapAction, setMapAction] = useState<string | null>(null);
 
+  // Load logic
   useEffect(() => {
-    // Load simulation data from local storage if available
-    // Try to get the specific simulation result first (from the URL query param logic if we had it, or just latest)
-    // For MVP, we'll try to find the most recent simulation run
     try {
       const stored = localStorage.getItem('lps_simulations');
       if (stored) {
         const allSims: StoredSim[] = JSON.parse(stored);
         if (allSims.length > 0) {
-           // Sort by timestamp desc
            allSims.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
            const latestSim = allSims[0];
            setFullSimulation(latestSim);
-           if (latestSim.data && latestSim.data.regional_analysis && latestSim.data.regional_analysis.length > 0) {
-             setRegionalData(latestSim.data.regional_analysis);
+           // Merge loaded data with geo data if possible
+           if (latestSim.data && latestSim.data.regional_analysis) {
+             const merged = DEFAULT_REGIONAL_DATA.map(geo => {
+               const found = latestSim.data.regional_analysis.find((r: any) => r.region_name.includes(geo.region_name.split(' ')[0]));
+               return found ? { ...geo, ...found } : geo;
+             });
+             setRegionalData(merged);
            }
         }
-      } else {
-        // Legacy fallback
-        const saved = localStorage.getItem('simulationResult');
-        if (saved) {
-            const data: StoredSim = JSON.parse(saved);
-            setFullSimulation(data);
-            if (data.data && data.data.regional_analysis && data.data.regional_analysis.length > 0) {
-                setRegionalData(data.data.regional_analysis);
-            } else if ((data as any).regional_analysis) {
-                 // Handle legacy format where regional_analysis was top level
-                 setRegionalData((data as any).regional_analysis);
-            }
-        }
       }
-    } catch (e) {
-      console.error("Failed to parse simulation data", e);
-    }
+    } catch (e) { console.error(e); }
   }, []);
 
   const handleGenerateReport = () => {
     setIsGeneratingReport(true);
-    
-    // Use the real PDF generator if we have data
     if (fullSimulation && fullSimulation.data) {
       try {
         generatePolicyPDF(fullSimulation.data);
-        setTimeout(() => {
-             setIsGeneratingReport(false);
-             // Optional: Show success toast or notification
-        }, 1000);
-      } catch (e) {
-        console.error("PDF Gen Failed", e);
-        setIsGeneratingReport(false);
-      }
-    } else if (fullSimulation && (fullSimulation as any).outcomes) {
-         // Handle legacy case where fullSimulation IS the data
-         try {
-            generatePolicyPDF(fullSimulation as any);
-            setTimeout(() => { setIsGeneratingReport(false); }, 1000);
-         } catch (e) { setIsGeneratingReport(false); }
+        setTimeout(() => setIsGeneratingReport(false), 1000);
+      } catch (e) { setIsGeneratingReport(false); }
     } else {
-        // Fallback mock if no data (shouldn't happen in real flow)
-        setTimeout(() => {
-          router.push('/report');
-        }, 2000);
+        setTimeout(() => router.push('/report'), 2000);
     }
   };
 
   const getColor = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('high benefit')) return 'green';
-    if (s.includes('moderate benefit')) return 'green'; // lighter green handled in component
-    if (s.includes('risk')) return 'red';
-    if (s.includes('neutral')) return 'gray';
-    return 'amber';
+    if (s.includes('high benefit')) return '#22c55e'; // green-500
+    if (s.includes('moderate benefit')) return '#4ade80'; // green-400
+    if (s.includes('risk')) return '#ef4444'; // red-500
+    if (s.includes('neutral')) return '#94a3b8'; // slate-400
+    return '#f59e0b'; // amber-500
   };
 
   const [activeFilter, setActiveFilter] = useState('Economic');
@@ -224,101 +213,62 @@ function MapPageContent() {
           </div>
         </aside>
 
-        {/* Map Viewport */}
-        <div className="flex-1 relative overflow-hidden bg-[#0d141b]">
-          {/* Mock Google Maps Background */}
-          <div className="absolute inset-0 grayscale opacity-40 mix-blend-screen pointer-events-none">
-            <img 
-              src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2000&auto=format&fit=crop" 
-              className="w-full h-full object-cover"
-              alt="City Map"
-            />
-          </div>
+        {/* Real Map Viewport */}
+        <div className="flex-1 relative overflow-hidden bg-[#0d141b] z-10">
+          <MapVisualization 
+            data={filteredData}
+            selectedRegion={selectedRegion}
+            setSelectedRegion={setSelectedRegion}
+            activeLayer={activeLayer}
+            mapAction={mapAction}
+            setMapAction={setMapAction}
+            getColor={getColor}
+          />
           
-          <div className="absolute inset-0 pointer-events-none">
-             <svg className="w-full h-full opacity-30" viewBox="0 0 1000 1000">
-               <path d="M100,200 Q300,100 500,250 T900,200 V800 Q700,900 500,750 T100,800 Z" fill="none" stroke="white" strokeWidth="0.5" />
-               <path d="M200,300 Q400,200 600,350 T800,300" fill="none" stroke="white" strokeWidth="0.3" strokeDasharray="5,5" />
-               <circle cx="300" cy="400" r="100" fill="none" stroke="white" strokeWidth="0.1" />
-               <circle cx="700" cy="600" r="150" fill="none" stroke="white" strokeWidth="0.1" />
-             </svg>
-          </div>
-
-          {/* Interactive Heatmap Layers */}
-          {activeLayer === 'heatmap' && (
-            <>
-              <div className="absolute top-[20%] left-[30%] w-64 h-64 bg-primary/20 rounded-full blur-[80px] animate-pulse" />
-              <div className="absolute top-[50%] left-[50%] w-96 h-96 bg-amber-500/15 rounded-full blur-[100px]" />
-              <div className="absolute bottom-[20%] right-[20%] w-80 h-80 bg-green-500/10 rounded-full blur-[90px]" />
-            </>
-          )}
-
-          {activeLayer === 'infrastructure' && (
-            <div className="absolute inset-0 pointer-events-none">
-              <svg className="w-full h-full" viewBox="0 0 1000 1000">
-                <path d="M0,500 L1000,500" stroke="#137fec" strokeWidth="2" strokeDasharray="10,5" className="opacity-40" />
-                <path d="M500,0 L500,1000" stroke="#137fec" strokeWidth="2" strokeDasharray="10,5" className="opacity-40" />
-              </svg>
-            </div>
-          )}
-
-          {/* Dynamic Map Markers from Regional Data */}
-          {filteredData.map((region, idx) => (
-            <MapMarker 
-              key={idx}
-              x={region.coordinates.x}
-              y={region.coordinates.y}
-              color={getColor(region.status)}
-              pulse={region.status.includes('High')}
-              label={region.region_name}
-              onClick={() => setSelectedRegion(region.region_name)}
-            />
-          ))}
-          
-          {/* Layer Control Modal (Mock) */}
-          <div className="absolute left-8 bottom-8 z-30 flex flex-col gap-2">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-white mb-2">Map Layers</h4>
-            <div className="bg-background-dark/80 backdrop-blur-xl border border-white/10 p-2 rounded-xl flex gap-2">
+          {/* Layer Controls */}
+          <div className="absolute left-8 bottom-8 z-[1000] flex flex-col gap-2 pointer-events-auto">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-white mb-2 shadow-black drop-shadow-md">Map Layers</h4>
+            <div className="bg-background-dark/80 backdrop-blur-xl border border-white/10 p-2 rounded-xl flex gap-2 shadow-2xl">
               <LayerBtn active={activeLayer === 'heatmap'} onClick={() => setActiveLayer('heatmap')} label="Heatmap" />
               <LayerBtn active={activeLayer === 'infrastructure'} onClick={() => setActiveLayer('infrastructure')} label="Infra" />
               <LayerBtn active={activeLayer === 'demographic'} onClick={() => setActiveLayer('demographic')} label="Demo" />
             </div>
           </div>
           
-          {/* Zoom/Map Controls */}
-          <div className="absolute right-8 top-8 lg:top-12 flex flex-col gap-3 z-30">
-            <MapActionBtn icon="add" label="Zoom In" />
-            <MapActionBtn icon="remove" label="Zoom Out" />
+          {/* Zoom Controls */}
+          <div className="absolute right-8 top-8 lg:top-12 flex flex-col gap-3 z-[1000] pointer-events-auto">
+            <MapActionBtn icon="add" label="Zoom In" onClick={() => setMapAction('zoomIn')} />
+            <MapActionBtn icon="remove" label="Zoom Out" onClick={() => setMapAction('zoomOut')} />
             <div className="h-4" />
-            <MapActionBtn icon="my_location" label="Re-center" />
-            <MapActionBtn icon="layers" label="Layers" active />
+            <MapActionBtn icon="my_location" label="Re-center" onClick={() => setMapAction('reCenter')} />
           </div>
 
           {/* Mobile Overlay Search & Legend */}
-          <div className="lg:hidden absolute top-6 left-6 right-6 flex flex-col gap-4 z-30">
-            <SearchBar placeholder="Search jurisdiction..." className="shadow-2xl shadow-black/50" />
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-              <FilterChip label="Economic" active />
-              <FilterChip label="Eco-Health" />
-              <FilterChip label="Demographic" />
+          <div className="lg:hidden absolute top-6 left-6 right-6 flex flex-col gap-4 z-[1000] pointer-events-none">
+            <div className="pointer-events-auto">
+                <SearchBar placeholder="Search jurisdiction..." className="shadow-2xl shadow-black/50" />
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none pointer-events-auto">
+              <FilterChip label="Economic" active={activeFilter === 'Economic'} onClick={() => setActiveFilter('Economic')} />
+              <FilterChip label="Eco-Health" active={activeFilter === 'Eco-Health'} onClick={() => setActiveFilter('Eco-Health')} />
+              <FilterChip label="Demographic" active={activeFilter === 'Demographic'} onClick={() => setActiveFilter('Demographic')} />
             </div>
           </div>
 
-          <div className="lg:hidden absolute bottom-6 left-6 right-6 z-30">
-             {/* Show first region or selected one on mobile */}
-            <RegionalAnalysisCard 
-              name={selectedRegion ? selectedRegion : regionalData[0]?.region_name}
-              status={selectedRegion 
-                ? regionalData.find(r => r.region_name === selectedRegion)?.status 
-                : regionalData[0]?.status}
-              metrics={selectedRegion 
-                ? regionalData.find(r => r.region_name === selectedRegion)?.key_metrics 
-                : regionalData[0]?.key_metrics}
-              color={getColor(selectedRegion 
-                ? regionalData.find(r => r.region_name === selectedRegion)?.status || 'Neutral'
-                : regionalData[0]?.status || 'Neutral')}
-              compact
-            />
+          <div className="lg:hidden absolute bottom-6 left-6 right-6 z-[1000] pointer-events-none">
+            {selectedRegion && (
+                <div className="pointer-events-auto">
+                    <RegionalAnalysisCard 
+                    name={selectedRegion}
+                    status={regionalData.find(r => r.region_name === selectedRegion)?.status}
+                    metrics={regionalData.find(r => r.region_name === selectedRegion)?.key_metrics}
+                    color={getColor(regionalData.find(r => r.region_name === selectedRegion)?.status || 'Neutral')}
+                    compact
+                    expanded={true}
+                    onClick={() => setSelectedRegion(null)}
+                    />
+                </div>
+            )}
           </div>
         </div>
 
@@ -369,16 +319,16 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, i
         <h4 className="font-bold text-sm lg:text-base">{name}</h4>
         <span className={cn(
           "text-[10px] font-bold uppercase tracking-widest",
-          color === 'green' ? "text-green-400" : color === 'amber' ? "text-amber-400" : color === 'red' ? "text-red-400" : "text-muted-foreground"
+          color === '#22c55e' ? "text-green-400" : color === '#f59e0b' ? "text-amber-400" : color === '#ef4444' ? "text-red-400" : "text-muted-foreground"
         )}>
           {status}
         </span>
       </div>
       <div className={cn(
         "w-2 h-2 rounded-full",
-        color === 'green' ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : 
-        color === 'amber' ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" :
-        color === 'red' ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]" :
+        color === '#22c55e' ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : 
+        color === '#f59e0b' ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" :
+        color === '#ef4444' ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]" :
         "bg-white/20"
       )} />
     </div>
@@ -409,33 +359,11 @@ const RegionalAnalysisCard = ({ name, status, metrics, color, compact = false, i
   </div>
 );
 
-const MapMarker = ({ x, y, color, pulse = false, label, onClick }: any) => (
-  <div 
-    onClick={onClick}
-    className="absolute -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group"
-    style={{ left: x, top: y }}
-  >
-    <div className={cn(
-      "w-4 h-4 rounded-full border-2 border-white/20 transition-transform group-hover:scale-125",
-      color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : color === 'red' ? "bg-red-500" : "bg-gray-500",
-      pulse && "animate-pulse"
-    )} />
-    {pulse && (
-      <div className={cn(
-        "absolute -inset-2 rounded-full opacity-30 animate-ping",
-        color === 'green' ? "bg-green-500" : color === 'amber' ? "bg-amber-500" : color === 'red' ? "bg-red-500" : "bg-gray-500"
-      )} />
-    )}
-    {/* Tooltip on hover */}
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-      {label}
-    </div>
-  </div>
-);
-
-const MapActionBtn = ({ icon, label, active = false }: any) => (
+const MapActionBtn = ({ icon, label, active = false, onClick }: any) => (
   <div className="relative group">
-    <button className={cn(
+    <button 
+      onClick={onClick}
+      className={cn(
       "w-12 h-12 rounded-xl flex items-center justify-center border transition-all shadow-2xl",
       active ? "bg-primary border-primary text-white" : "bg-card-alt/90 backdrop-blur-xl border-white/10 text-muted-foreground hover:text-foreground"
     )}>
