@@ -24,6 +24,13 @@ function VisualizationContent() {
   const [simData, setSimData] = useState<any>(null);
   const [wbData, setWbData] = useState<any>(null);
   const [loadingWb, setLoadingWb] = useState(false);
+  
+  // Params State
+  const [params, setParams] = useState({ tax: -0.15, consumption: 0.82, labor: -0.42 });
+  const [toast, setToast] = useState<{ message: string, type: 'info' | 'success' } | null>(null);
+  
+  // Causal View State
+  const [activeAssumption, setActiveAssumption] = useState<string | null>('Market Elasticity');
 
   useEffect(() => {
     const loadData = async () => {
@@ -92,6 +99,33 @@ function VisualizationContent() {
     return 'groups';
   };
 
+  const handleApplyParams = () => {
+    setShowParamsModal(false);
+    setToast({ message: "Re-running simulation with new parameters...", type: 'info' });
+    
+    // Simulate re-run delay
+    setTimeout(() => {
+      // Mock update simData to reflect changes
+      if (simData) {
+         setSimData((prev: any) => ({
+            ...prev,
+            short_term_impact: "Updated projection based on revised elasticity parameters shows a 0.5% variance in short-term growth.",
+            outcomes: {
+                ...prev.outcomes,
+                economic: {
+                    ...prev.outcomes?.economic,
+                    indicators: prev.outcomes?.economic?.indicators?.map((i: any) => 
+                        i.name.includes('GDP') ? { ...i, value: "+2.9%" } : i
+                    )
+                }
+            }
+         }));
+      }
+      setToast({ message: "Simulation updated successfully.", type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    }, 2500);
+  };
+
   const handleDeploy = async () => {
     setIsDeploying(true);
     
@@ -136,12 +170,11 @@ function VisualizationContent() {
         { source: "n4", target: "n5", strength: 0.7, description: "Tech Leadership" }
     ];
 
-    // Simple manual layout for now (can use dagre or force-graph in future)
-    // Root at left, factors middle, outcomes right
+    // Responsive layout using viewBox space (1000x600)
     const getNodePos = (node: any, i: number, total: number) => {
-        const layer = node.type === 'policy' ? 100 : node.type === 'factor' ? 400 : 700;
+        const layer = node.type === 'policy' ? 100 : node.type === 'factor' ? 500 : 900;
         // Distribute vertically
-        const y = 100 + (i * 120) % 400; 
+        const y = 100 + (i * 150) % 400; 
         return { x: layer, y };
     };
 
@@ -149,10 +182,10 @@ function VisualizationContent() {
 
     return (
         <div className="relative w-full h-[500px] border border-white/5 rounded-2xl bg-[#0d141b] overflow-hidden">
-            <svg className="w-full h-full">
+            <svg viewBox="0 0 1000 600" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
                 <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+                    <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="28" refY="2" orient="auto">
+                        <polygon points="0 0, 6 2, 0 4" fill="#64748b" />
                     </marker>
                 </defs>
                 {/* Edges */}
@@ -163,23 +196,23 @@ function VisualizationContent() {
                     return (
                         <g key={i} className="group">
                             <path 
-                                d={`M${src.x},${src.y} C${src.x+100},${src.y} ${tgt.x-100},${tgt.y} ${tgt.x},${tgt.y}`}
+                                d={`M${src.x},${src.y} C${src.x+200},${src.y} ${tgt.x-200},${tgt.y} ${tgt.x},${tgt.y}`}
                                 stroke={e.strength > 0 ? "#22c55e" : "#ef4444"} 
-                                strokeWidth={Math.abs(e.strength) * 4}
+                                strokeWidth={Math.abs(e.strength) * 6}
                                 fill="none"
                                 markerEnd="url(#arrowhead)"
                                 className="opacity-60 group-hover:opacity-100 transition-opacity"
                             />
-                             <text x={(src.x + tgt.x)/2} y={(src.y + tgt.y)/2 - 10} className="fill-muted-foreground text-[10px] opacity-0 group-hover:opacity-100 transition-opacity text-center" textAnchor="middle">{e.description}</text>
+                             <text x={(src.x + tgt.x)/2} y={(src.y + tgt.y)/2 - 10} className="fill-muted-foreground text-[12px] opacity-0 group-hover:opacity-100 transition-opacity text-center" textAnchor="middle">{e.description}</text>
                         </g>
                     );
                 })}
                 {/* Nodes */}
                 {nodePositions.map((n: any) => (
                     <g key={n.id} className="cursor-pointer hover:opacity-80 transition-opacity" transform={`translate(${n.x},${n.y})`}>
-                        <circle r="25" fill={n.type === 'policy' ? '#137fec' : n.type === 'factor' ? '#f59e0b' : '#22c55e'} className="shadow-lg" />
-                        <text y="5" textAnchor="middle" fill="white" className="text-[10px] font-bold uppercase pointer-events-none">{n.label.substring(0, 3)}</text>
-                        <text y="40" textAnchor="middle" fill="#94a3b8" className="text-[10px] font-bold uppercase tracking-widest">{n.label}</text>
+                        <circle r="30" fill={n.type === 'policy' ? '#137fec' : n.type === 'factor' ? '#f59e0b' : '#22c55e'} className="shadow-lg" />
+                        <text y="5" textAnchor="middle" fill="white" className="text-[12px] font-bold uppercase pointer-events-none">{n.label.substring(0, 3)}</text>
+                        <text y="50" textAnchor="middle" fill="#94a3b8" className="text-[12px] font-bold uppercase tracking-widest">{n.label}</text>
                     </g>
                 ))}
             </svg>
@@ -885,15 +918,20 @@ function VisualizationContent() {
                   <AssumptionItem 
                     title="Market Elasticity" 
                     desc="Based on the 'Inter' model of industrial behavior, assuming a 0.8 correlation between energy price hikes and clean tech capital expenditure."
-                    active
+                    active={activeAssumption === 'Market Elasticity'}
+                    onClick={() => setActiveAssumption(activeAssumption === 'Market Elasticity' ? null : 'Market Elasticity')}
                   />
                   <AssumptionItem 
                     title="Evidence: 2022 Pilot Data" 
                     desc="Historical performance from similar regional rollouts suggests a 15% faster adoption rate in urban industrial clusters."
+                    active={activeAssumption === 'Evidence: 2022 Pilot Data'}
+                    onClick={() => setActiveAssumption(activeAssumption === 'Evidence: 2022 Pilot Data' ? null : 'Evidence: 2022 Pilot Data')}
                   />
                   <AssumptionItem 
                     title="Uncertainty Factors" 
                     desc="Supply chain volatility for offshore wind turbine components remains a high-risk variable for stabilization."
+                    active={activeAssumption === 'Uncertainty Factors'}
+                    onClick={() => setActiveAssumption(activeAssumption === 'Uncertainty Factors' ? null : 'Uncertainty Factors')}
                   />
                 </div>
 
@@ -1267,29 +1305,47 @@ function VisualizationContent() {
                  <div className="flex flex-col gap-2">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
                        <span>Tax Rate Sensitivity</span>
-                       <span className="text-white">-0.15</span>
+                       <span className="text-white">{params.tax.toFixed(2)}</span>
                     </div>
-                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                    <input 
+                      type="range" 
+                      min="-1" max="1" step="0.05"
+                      value={params.tax}
+                      onChange={(e) => setParams(p => ({...p, tax: parseFloat(e.target.value)}))}
+                      className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" 
+                    />
                  </div>
                  <div className="flex flex-col gap-2">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
                        <span>Consumption Multiplier</span>
-                       <span className="text-white">+0.82</span>
+                       <span className="text-white">{params.consumption.toFixed(2)}</span>
                     </div>
-                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                    <input 
+                      type="range" 
+                      min="0" max="2" step="0.05"
+                      value={params.consumption}
+                      onChange={(e) => setParams(p => ({...p, consumption: parseFloat(e.target.value)}))}
+                      className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" 
+                    />
                  </div>
                  <div className="flex flex-col gap-2">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
                        <span>Labor Elasticity</span>
-                       <span className="text-white">-0.42</span>
+                       <span className="text-white">{params.labor.toFixed(2)}</span>
                     </div>
-                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                    <input 
+                      type="range" 
+                      min="-1" max="1" step="0.05"
+                      value={params.labor}
+                      onChange={(e) => setParams(p => ({...p, labor: parseFloat(e.target.value)}))}
+                      className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" 
+                    />
                  </div>
               </div>
 
               <div className="flex justify-end gap-4 mt-2">
                  <button onClick={() => setShowParamsModal(false)} className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-white transition-all">Cancel</button>
-                 <button onClick={() => { setShowParamsModal(false); alert("Parameters updated. Re-running simulation..."); }} className="px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-widest shadow-lg transition-all hover:scale-105">Apply Changes</button>
+                 <button onClick={handleApplyParams} className="px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-widest shadow-lg transition-all hover:scale-105">Apply Changes</button>
               </div>
            </div>
         </div>
@@ -1329,6 +1385,19 @@ function VisualizationContent() {
                  </div>
               </div>
               <button onClick={() => setShowAuditModal(false)} className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-white border border-white/5 transition-all">Close Log</button>
+           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] animate-in slide-in-from-bottom-4 fade-in duration-300">
+           <div className={cn(
+               "px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border backdrop-blur-xl",
+               toast.type === 'success' ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+           )}>
+               <Icon name={toast.type === 'success' ? "check_circle" : "info"} className="text-xl" />
+               <span className="text-sm font-bold tracking-wide">{toast.message}</span>
            </div>
         </div>
       )}
@@ -1526,11 +1595,14 @@ const CausalNode = ({ icon, type, title, desc, status, active = false, warning =
   </div>
 );
 
-const AssumptionItem = ({ title, desc, active = false }: any) => (
-  <div className={cn(
-    "stitch-card p-6 flex flex-col gap-4 transition-all border group cursor-pointer",
-    active ? "bg-primary/5 border-primary/30 shadow-lg" : "bg-white/[0.02] border-white/5 hover:border-white/10"
-  )}>
+const AssumptionItem = ({ title, desc, active = false, onClick }: any) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+      "stitch-card p-6 flex flex-col gap-4 transition-all border group cursor-pointer",
+      active ? "bg-primary/5 border-primary/30 shadow-lg" : "bg-white/[0.02] border-white/5 hover:border-white/10"
+    )}
+  >
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className={cn(
@@ -1541,13 +1613,15 @@ const AssumptionItem = ({ title, desc, active = false }: any) => (
         </div>
         <span className="text-sm font-bold text-foreground/90">{title}</span>
       </div>
-      <Icon name={active ? "expand_less" : "expand_more"} className="text-muted-foreground/40 group-hover:text-muted-foreground" />
+      <Icon name={active ? "expand_less" : "expand_more"} className={cn("text-muted-foreground/40 group-hover:text-muted-foreground transition-transform duration-300", active && "text-primary")} />
     </div>
-    {active && (
-      <p className="text-sm text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
-        {desc}
-      </p>
-    )}
+    <div className={cn("grid transition-all duration-300 ease-in-out", active ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0")}>
+       <div className="overflow-hidden">
+         <p className="text-sm text-muted-foreground leading-relaxed">
+           {desc}
+         </p>
+       </div>
+    </div>
   </div>
 );
 
