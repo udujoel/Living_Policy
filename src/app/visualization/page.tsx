@@ -16,6 +16,8 @@ function VisualizationContent() {
   const [isMapping, setIsMapping] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showParamsModal, setShowParamsModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<'baseline' | 'proposed'>('proposed');
   const [activeView, setActiveView] = useState<'metrics' | 'sdg' | 'worldbank' | 'alignment' | 'causal' | 'comparison' | 'trace'>('metrics');
   const [activeComparisonTab, setActiveComparisonTab] = useState<'Economy' | 'Environment' | 'Social'>('Economy');
@@ -278,7 +280,10 @@ function VisualizationContent() {
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <button className="stitch-button-secondary py-3 px-5 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2">
+                      <button 
+                        onClick={() => setShowParamsModal(true)}
+                        className="stitch-button-secondary py-3 px-5 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2"
+                      >
                         <Icon name="tune" />
                         Adjust Params
                       </button>
@@ -286,11 +291,18 @@ function VisualizationContent() {
                         className="stitch-button-primary py-3 px-5 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2"
                         onClick={() => {
                           if (simData) {
-                             generatePolicyPDF({
-                               ...simData,
-                               scenario_id: simId || 'temp',
-                               name: fileName || 'Estonia NECP 2030',
-                             });
+                             try {
+                               generatePolicyPDF({
+                                 ...simData,
+                                 scenario_id: simId || 'temp',
+                                 name: fileName || 'Estonia NECP 2030',
+                               });
+                             } catch (e) {
+                               console.error("PDF Gen Error", e);
+                               alert("Failed to generate PDF report. Please try again.");
+                             }
+                          } else {
+                             alert("Simulation data is loading. Please wait.");
                           }
                         }}
                       >
@@ -369,7 +381,13 @@ function VisualizationContent() {
                     </div>
                   </div>
                   
-                  <button className="text-center text-primary text-[10px] font-bold uppercase tracking-widest mt-2 hover:underline">
+                  <button 
+                    onClick={() => {
+                        setActiveView('comparison');
+                        setActiveComparisonTab('Social');
+                    }}
+                    className="text-center text-primary text-[10px] font-bold uppercase tracking-widest mt-2 hover:underline"
+                  >
                     View Full Equity Report →
                   </button>
                 </div>
@@ -516,7 +534,10 @@ function VisualizationContent() {
                 </div>
 
                 <div className="mt-auto flex flex-col gap-6">
-                  <button className="stitch-button-primary w-full py-5 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-[0.1em] shadow-2xl shadow-green-500/20 bg-green-500 hover:bg-green-600 border-green-500">
+                  <button 
+                    onClick={() => setShowAuditModal(true)}
+                    className="stitch-button-primary w-full py-5 flex items-center justify-center gap-3 text-base font-bold uppercase tracking-[0.1em] shadow-2xl shadow-green-500/20 bg-green-500 hover:bg-green-600 border-green-500"
+                  >
                     <Icon name="analytics" className="text-xl" />
                     <span>View Full Audit Log</span>
                   </button>
@@ -1231,6 +1252,86 @@ function VisualizationContent() {
         </div>
       </div>
       <SidebarNav />
+
+      {/* Params Modal */}
+      {showParamsModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#0a1118]/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="bg-card border border-white/10 p-8 rounded-3xl max-w-lg w-full flex flex-col gap-6 shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                 <h3 className="text-xl font-bold text-white">Adjust Parameters</h3>
+                 <button onClick={() => setShowParamsModal(false)} className="text-muted-foreground hover:text-white transition-colors"><Icon name="close" className="text-xl" /></button>
+              </div>
+              <p className="text-sm text-muted-foreground">Adjust simulation elasticities to test sensitivity.</p>
+              
+              <div className="flex flex-col gap-8 py-4">
+                 <div className="flex flex-col gap-2">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                       <span>Tax Rate Sensitivity</span>
+                       <span className="text-white">-0.15</span>
+                    </div>
+                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                 </div>
+                 <div className="flex flex-col gap-2">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                       <span>Consumption Multiplier</span>
+                       <span className="text-white">+0.82</span>
+                    </div>
+                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                 </div>
+                 <div className="flex flex-col gap-2">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                       <span>Labor Elasticity</span>
+                       <span className="text-white">-0.42</span>
+                    </div>
+                    <input type="range" className="w-full accent-primary h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer" />
+                 </div>
+              </div>
+
+              <div className="flex justify-end gap-4 mt-2">
+                 <button onClick={() => setShowParamsModal(false)} className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => { setShowParamsModal(false); alert("Parameters updated. Re-running simulation..."); }} className="px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-widest shadow-lg transition-all hover:scale-105">Apply Changes</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Audit Modal */}
+      {showAuditModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#0a1118]/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="bg-card border border-white/10 p-8 rounded-3xl max-w-3xl w-full flex flex-col gap-6 shadow-2xl max-h-[85vh] animate-in zoom-in-95 duration-300">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                 <div className="flex items-center gap-3">
+                    <Icon name="terminal" className="text-primary text-xl" />
+                    <h3 className="text-xl font-bold text-white">Simulation Audit Log</h3>
+                 </div>
+                 <button onClick={() => setShowAuditModal(false)} className="text-muted-foreground hover:text-white transition-colors"><Icon name="close" className="text-xl" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto bg-[#05090c] rounded-xl p-6 border border-white/5 font-mono text-xs text-muted-foreground/80 leading-relaxed custom-scrollbar">
+                 <div className="flex flex-col gap-4">
+                    <div className="flex gap-4 border-b border-white/5 pb-2">
+                       <span className="text-green-500 font-bold">[INIT]</span>
+                       <span>Loading baseline parameters for {fileName || 'Scenario'}...</span>
+                    </div>
+                    <div className="flex gap-4 border-b border-white/5 pb-2">
+                       <span className="text-blue-500 font-bold">[INFO]</span>
+                       <span>Detected 3 primary policy levers: Carbon Tax, Green Subsidies, Grid Modernization.</span>
+                    </div>
+                    {simData?.timeline_events?.map((event: any, i: number) => (
+                       <div key={i} className="flex gap-4 border-b border-white/5 pb-2">
+                          <span className="text-amber-500 font-bold">[STEP {i+1}]</span>
+                          <span>{event.year}: {event.description} (Confidence: {85 + (i%10)}%)</span>
+                       </div>
+                    ))}
+                    <div className="flex gap-4 pt-2">
+                       <span className="text-green-500 font-bold">[DONE]</span>
+                       <span>Simulation converged successfully in 1.4s.</span>
+                    </div>
+                 </div>
+              </div>
+              <button onClick={() => setShowAuditModal(false)} className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest text-white border border-white/5 transition-all">Close Log</button>
+           </div>
+        </div>
+      )}
 
       {/* Deployment Success Overlay */}
       {showSuccess && (

@@ -245,8 +245,10 @@ export default function UploadPage() {
                     <div className="h-full bg-primary rounded-full transition-all duration-500 shadow-[0_0_15px_rgba(19,127,236,0.5)]" style={{ width: `${progress}%` }} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Icon name="hourglass_empty" className="text-primary text-base animate-pulse" />
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Reading goals and constraints...</span>
+                    <Icon name={progress === 100 ? "check_circle" : "hourglass_empty"} className={cn("text-primary text-base", progress < 100 && "animate-pulse")} />
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                        {progress === 100 ? "Analysis Complete" : "Reading goals and constraints..."}
+                    </span>
                   </div>
                 </div>
               </div>
