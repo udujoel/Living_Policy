@@ -15,6 +15,22 @@ export default function SettingsPage() {
       router.push('/');
     }, 1000);
   };
+
+  const handleFixCors = async () => {
+    try {
+        if (!confirm("This will update Cloudflare R2 CORS settings. Continue?")) return;
+        const res = await fetch('/api/admin/fix-cors');
+        const data = await res.json();
+        if (data.success) {
+            alert("Success: " + data.message);
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) {
+        alert("Failed to call admin API");
+    }
+  };
+
   return (
     <main className="max-container flex flex-col h-screen overflow-hidden pb-20 lg:pb-0">
       <TopNav title="Settings" />
@@ -81,6 +97,23 @@ export default function SettingsPage() {
                 <SettingsItem icon="query_stats" title="External GIS Feeds" desc="Mapbox and ESRI integration." />
               </SettingsSection>
             </div>
+
+            <SettingsSection title="Storage & Maintenance">
+                <button onClick={handleFixCors} className="stitch-card p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group w-full text-left">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/5">
+                            <Icon name="cloud_sync" className="text-xl text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <h4 className="text-sm font-bold">Fix Storage Permissions (CORS)</h4>
+                            <p className="text-[10px] text-muted-foreground leading-tight max-w-[200px]">Allow browser uploads to R2.</p>
+                        </div>
+                    </div>
+                    <div className="bg-white/5 px-2 py-1 rounded text-[8px] font-bold uppercase tracking-widest text-muted-foreground/60 group-hover:text-primary transition-colors border border-white/5">
+                        Run Fix
+                    </div>
+                </button>
+            </SettingsSection>
 
             <SettingsSection title="Notifications">
               <div className="stitch-card p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
