@@ -74,7 +74,7 @@ export default function DashboardPage() {
       <div className="px-6 lg:px-12 flex flex-col gap-6 mt-10 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl lg:text-3xl font-bold">Projects</h2>
-          <Link href="/upload" className="bg-primary p-2 lg:p-3 rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20">
+          <Link href="/upload?new=true" className="bg-primary p-2 lg:p-3 rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-primary/20">
             <Icon name="add" className="text-white text-2xl" />
             <span className="hidden lg:inline text-white font-bold text-sm uppercase tracking-widest">New Project</span>
           </Link>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold text-foreground">No Projects Yet</h3>
                 <p className="text-sm font-medium leading-relaxed opacity-60">Upload your first policy document to start simulating causal scenarios and SDG impacts.</p>
               </div>
-              <Link href="/upload" className="stitch-button-primary px-8 py-3 flex items-center gap-2 mt-4 group">
+              <Link href="/upload?new=true" className="stitch-button-primary px-8 py-3 flex items-center gap-2 mt-4 group">
                 <Icon name="add" className="text-xl group-hover:rotate-90 transition-transform" />
                 <span>Create First Project</span>
               </Link>

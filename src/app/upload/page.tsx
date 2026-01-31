@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Icon, TopNav, BottomAction, StatusPill, SidebarNav } from '@/components/SharedUI';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
+import { Icon, TopNav, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getStoredUploads, saveUpload, UploadedFile } from '@/lib/storage';
 
-export default function UploadPage() {
+function UploadContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isNewProject = searchParams.get('new') === 'true';
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -16,19 +19,29 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const stored = getStoredUploads();
-    if (stored.length > 0) {
-      setUploads(stored);
-      setAnalyzingFile(stored[0]);
+    if (isNewProject) {
+        setUploads([]);
+        setAnalyzingFile(null);
+        setProgress(0);
     } else {
-      setUploads([]);
-      setAnalyzingFile(null);
+        const stored = getStoredUploads();
+        if (stored.length > 0) {
+          setUploads(stored);
+          setAnalyzingFile(stored[0]);
+          // If loading from storage, assume analysis is complete
+          setProgress(100);
+        } else {
+          setUploads([]);
+          setAnalyzingFile(null);
+        }
     }
-  }, []);
+  }, [isNewProject]);
 
   const [findings, setFindings] = useState<any[]>([]);
 
   useEffect(() => {
+    // Only animate if we are actively processing (progress < 100)
+    // If progress is already 100 (from storage load), this won't run
     if (analyzingFile && progress < 100) {
       const timer = setInterval(() => {
         setProgress(prev => {
@@ -228,7 +241,7 @@ export default function UploadPage() {
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight mt-0.5">{analyzingFile?.size} • Processing...</p>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon name="sync" className="text-primary text-xl animate-spin" />
+                      <Icon name={progress === 100 ? "check" : "sync"} className={cn("text-primary text-xl", progress < 100 && "animate-spin")} />
                     </div>
                   </div>
                 </div>
@@ -338,3 +351,11 @@ const FindingItem = ({ icon, title, desc, color, bgColor, className }: any) => (
     </div>
   </div>
 );
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a1118] flex items-center justify-center text-white font-mono text-xs uppercase tracking-widest">Loading interface...</div>}>
+      <UploadContent />
+    </Suspense>
+  );
+}
