@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { Icon, TopNav, BottomAction, SearchBar, SidebarNav } from '@/components/SharedUI';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { SimulationResult as SimData, RegionalImpact } from '@/lib/types';
 import { SimulationResult as StoredSim } from '@/lib/storage';
 import { generatePolicyPDF } from '@/lib/pdf-gen';
 import { GeoRegionalImpact } from '@/components/MapVisualization';
@@ -19,6 +18,7 @@ const MapVisualization = dynamic(() => import('@/components/MapVisualization'), 
 const DEFAULT_REGIONAL_DATA: GeoRegionalImpact[] = [
   { 
     region_name: "Urban Core (Tallinn)", 
+    coordinates: { x: "59.4370", y: "24.7536" },
     coords: [59.4370, 24.7536],
     polygon: [
       [59.48, 24.65], [59.48, 24.85], [59.38, 24.85], [59.38, 24.65]
@@ -33,6 +33,7 @@ const DEFAULT_REGIONAL_DATA: GeoRegionalImpact[] = [
   },
   { 
     region_name: "Suburban Ring (Harju)", 
+    coordinates: { x: "59.3000", y: "24.9000" },
     coords: [59.3000, 24.9000], 
     polygon: [
       [59.38, 24.60], [59.45, 25.10], [59.20, 25.20], [59.15, 24.50]
@@ -47,6 +48,7 @@ const DEFAULT_REGIONAL_DATA: GeoRegionalImpact[] = [
   },
   { 
     region_name: "Industrial District (Ida-Viru)", 
+    coordinates: { x: "59.3797", y: "27.4191" },
     coords: [59.3797, 27.4191], 
     polygon: [
       [59.45, 27.00], [59.45, 28.20], [59.00, 28.20], [59.00, 27.00]
@@ -61,6 +63,7 @@ const DEFAULT_REGIONAL_DATA: GeoRegionalImpact[] = [
   },
   { 
     region_name: "Rural Outskirts (Tartu/South)", 
+    coordinates: { x: "58.3780", y: "26.7290" },
     coords: [58.3780, 26.7290], 
     polygon: [
       [58.50, 26.40], [58.50, 27.00], [58.20, 27.00], [58.20, 26.40]
